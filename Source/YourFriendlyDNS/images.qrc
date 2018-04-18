@@ -1,0 +1,7 @@
+<RCC>
+    <qresource prefix="/images">
+        <file>newBCHaddr_small.png</file>
+        <file>newBTCaddr_small.png</file>
+        <file>YFD.png</file>
+    </qresource>
+</RCC>

@@ -139,7 +139,7 @@ public:
 
 private:
     QUdpSocket sock;
-    DNSInfo whoWeNeedToRespondImmediatelyTo;
+    DNSInfo respondTo;
     bool responseHandled;
 
 signals:

@@ -56,6 +56,7 @@ private slots:
     void settingsUpdated();
     void queryRespondedTo(ListEntry e);
     void autoCaptureCaptivePortals();
+    void iptablesUndoAndroid();
     void on_firstAddButton_clicked();
     void on_whitelistButton_clicked();
     void on_blacklistButton_clicked();

@@ -100,6 +100,7 @@ signals:
     void clearDNSCache();
     void setIPToFirstListening();
     void autoCaptureCaptivePortals();
+    void iptablesUndoAndroid();
 
 private slots:
     void on_addButton_clicked();
@@ -114,6 +115,7 @@ private slots:
     void on_ipinjectButton_clicked();
     void on_autoinjectBox_stateChanged(int arg1);
     void on_captureCaptive_clicked();
+    void on_iptablesUndo_clicked();
 
 private:
     Ui::SettingsWindow *ui;

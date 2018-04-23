@@ -193,3 +193,8 @@ void SettingsWindow::on_captureCaptive_clicked()
 {
     emit autoCaptureCaptivePortals();
 }
+
+void SettingsWindow::on_iptablesUndo_clicked()
+{
+    emit iptablesUndoAndroid();
+}

@@ -12,7 +12,6 @@ public:
         iptablesSet, iptablesRemove
     };
 
-    QProcess su;
     opcode op;
     quint16 dnsServerPort,httpServerPort;
     AndroidSU_ServerOP(opcode op, quint16 dnsServerPort, quint16 httpServerPort = 0)
@@ -23,6 +22,7 @@ public:
     }
     void run()
     {
+        QProcess su;
         if(op == opcode::iptablesSet)
         {
             //Run su, enable ipv4 forwarding, and do iptables redirect from port 53(dns) to 5354 (where this server is binded on android)

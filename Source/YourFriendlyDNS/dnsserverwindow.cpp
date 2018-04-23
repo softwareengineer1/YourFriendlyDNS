@@ -28,8 +28,6 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 DNSServerWindow::DNSServerWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::DNSServerWindow)
 {
     ui->setupUi(this);
-    server = nullptr;
-    httpServer = nullptr;
 
     qRegisterMetaType<ListEntry>("ListEntry");
 
@@ -42,6 +40,7 @@ DNSServerWindow::DNSServerWindow(QWidget *parent) : QMainWindow(parent), ui(new 
     connect(settings, SIGNAL(settingsUpdated()), this, SLOT(settingsUpdated()));
     connect(settings, SIGNAL(setIPToFirstListening()), this, SLOT(setIPToFirstListening()));
     connect(settings, SIGNAL(autoCaptureCaptivePortals()), this, SLOT(autoCaptureCaptivePortals()));
+    connect(settings, SIGNAL(iptablesUndoAndroid()), this, SLOT(iptablesUndoAndroid()));
     connect(settings->indexhtml, SIGNAL(htmlChanged(QString&)), this, SLOT(htmlChanged(QString&)));
 
     settingspath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
@@ -154,6 +153,15 @@ void DNSServerWindow::autoCaptureCaptivePortals()
     appendToBlacklist(ListEntry("clients3.google.com"));
     appendToBlacklist(ListEntry("captive.apple.com"));
     refreshList();
+}
+
+void DNSServerWindow::iptablesUndoAndroid()
+{
+    #ifdef Q_OS_ANDROID
+    AndroidSU_ServerOP *suOP = new AndroidSU_ServerOP(AndroidSU_ServerOP::opcode::iptablesRemove, server->dnsServerPort, server->httpServerPort);
+    connect(suOP, SIGNAL(finished()), suOP, SLOT(deleteLater()));
+    suOP->start();
+    #endif
 }
 
 void DNSServerWindow::appendToBlacklist(ListEntry e)

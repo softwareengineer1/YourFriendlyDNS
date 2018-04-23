@@ -98,20 +98,20 @@ void SmallDNSServer::processDNSRequests()
 
         if(!dns.isValid) continue;
         bool cacheNewIPsForDomain = true;
-        std::string tame = dns.domainString.toStdString(); //(char*)dns.domainString.toUtf8().data();
+        std::string tame = (char*)dns.domainString.toUtf8().data(); //I think this one is better
+        //std::string tame = dns.domainString.toStdString();
         if(whitelistmode)
         {
             bool whitelisted = false;
             for(ListEntry &whitelistedDomain : whitelist)
             {
-                //std::string wild = whitelistedDomain.hostname.toUtf8().data();
-                std::string wild = whitelistedDomain.hostname.toStdString();
+                std::string wild = whitelistedDomain.hostname.toUtf8().data();
+                //td::string wild = whitelistedDomain.hostname.toStdString();
                 ////if(dns.domainString == whitelistedDomain.hostname)
                 if(GeneralTextCompare((char*)tame.c_str(), (char*)wild.c_str()))
                 {
                     qDebug() << "Matched WhiteList!" << whitelistedDomain.hostname << "to:" << dns.domainString;
                     whitelisted = true;
-
                     //It's whitelist mode and in the whitelist, so it should return a real IP! Unless you've manually specified an IP
                     if(whitelistedDomain.ip == 0)
                         shouldReturnCustomIP = false;
@@ -127,12 +127,12 @@ void SmallDNSServer::processDNSRequests()
             bool notblacklisted = true;
             for(ListEntry &blacklistedDomain : blacklist)
             {
-                //std::string wild = blacklistedDomain.hostname.toUtf8().data();
-                std::string wild = blacklistedDomain.hostname.toStdString();
+                std::string wild = blacklistedDomain.hostname.toUtf8().data();
+                //std::string wild = blacklistedDomain.hostname.toStdString();
                 //if(dns.domainString == blacklistedDomain.hostname)
                 if(GeneralTextCompare((char*)tame.c_str(), (char*)wild.c_str()))
                 {
-                    //qDebug() << "Matched BlackList!" << blacklistedDomain.hostname << "to:" << dns.domainString;
+                    qDebug() << "Matched BlackList!" << blacklistedDomain.hostname << "to:" << dns.domainString;
                     notblacklisted = false;
                     //It's blacklist mode and in the blacklist, so it should return your custom IP! And your manually specified one if you did specify a particular one
                     shouldReturnCustomIP = true;
@@ -186,7 +186,7 @@ void SmallDNSServer::processDNSRequests()
 
             //Here's where we forward the received request to a real dns server, if not cached yet or its time to update the cache for this domain
             //Only executes if the domain is whitelisted or not blacklisted (depending on which mode you're using)
-            if(cacheNewIPsForDomain)
+            if(cacheNewIPsForDomain && dns.domainString.contains("."))
             {
                 QHostAddress realdnsserver = selectRandomDNSServer();
                 qDebug() << "Making DNS request for domain:" << dns.domainString << "Using real DNS:" << realdnsserver;
@@ -203,7 +203,7 @@ void SmallDNSServer::processDNSRequests()
         {
             //If it's not an A record request, but it's still a host in the whitelist/not in the blacklist, then let's handle it anyway to be complete
             //NOTE: Unlike for A records I don't interpret them fully, just proxy it (forward to real dns server, get response, and pass it back to requester)
-            if(cacheNewIPsForDomain)
+            if(cacheNewIPsForDomain && dns.domainString.contains("."))
             {
                 QHostAddress realdnsserver = selectRandomDNSServer();
                 qDebug() << "Making non A record request for domain:" << dns.domainString << "Using DNS Server:" << realdnsserver;
@@ -248,7 +248,7 @@ void SmallDNSServer::processLookups()
                         //qDebug() << "Updating cache for:" << dns.domainString << "new expiry:" << dns.expiry;
                         cachedDNSResponses[i] = dns;
                         emit queryRespondedTo(ListEntry(dns.domainString,dns.ipaddresses[0]));
-                        return;
+                        continue;
                     }
                 }
                 //Or just add it initially
@@ -357,6 +357,9 @@ void SmallDNSServer::getHostAddresses(const QByteArray &dnsresponse, DNSInfo &dn
 
     for(quint16 i = 0; i < dns.header.ans_count; i++)
     {
+        if((ptr + DNS_HEADER_SIZE) >= ptr_end)
+            break;
+
         answer.name = qFromBigEndian(*(quint16*)ptr);
         ptr += 2;
         answer.type = qFromBigEndian(*(quint16*)ptr);

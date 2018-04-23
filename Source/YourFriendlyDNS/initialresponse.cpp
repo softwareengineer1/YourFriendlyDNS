@@ -49,7 +49,7 @@ void morphRequestIntoARecordResponse(QByteArray &dnsrequest, quint32 responseIP,
         // We add our answer containing our ip of choice! (localhost/127.0.0.1 by default, change it in setings or adding a host with a custom ip to either list)
         ptr[DNS_HEADER_ANSWER_COUNT_OFFSET]++;
 
-        if(spliceOffset <= (quint32)dnsrequest.size()) //Make sure the splice offset / where the answer(s) should go is in bounds or don't use it
+        if(spliceOffset < (quint32)dnsrequest.size()) //Make sure the splice offset / where the answer(s) should go is in bounds or don't use it
             dnsrequest.insert(spliceOffset, (char*)QAnswer, 16);
         else
             dnsrequest.append((char*)QAnswer, 16);
@@ -90,7 +90,7 @@ void morphRequestIntoARecordResponse(QByteArray &dnsrequest, std::vector<quint32
                 answers.append((char*)QAnswer, 16);
             }
 
-            if(spliceOffset <= (quint32)dnsrequest.size()) //Make sure the splice offset / where the answer(s) should go is in bounds or don't use it
+            if(spliceOffset < (quint32)dnsrequest.size()) //Make sure the splice offset / where the answer(s) should go is in bounds or don't use it
                 dnsrequest.insert(spliceOffset, answers);
             else
                 dnsrequest.append(answers);
@@ -108,38 +108,42 @@ void morphRequestIntoARecordResponse(QByteArray &dnsrequest, std::vector<quint32
 InitialResponse::InitialResponse(DNSInfo &dns, QObject *parent)
 {
     Q_UNUSED(parent);
-    whoWeNeedToRespondImmediatelyTo.domainString = dns.domainString;
-    whoWeNeedToRespondImmediatelyTo.sender = dns.sender;
-    whoWeNeedToRespondImmediatelyTo.senderPort = dns.senderPort;
-    whoWeNeedToRespondImmediatelyTo.req = dns.req;
+    respondTo.domainString = dns.domainString;
+    respondTo.sender = dns.sender;
+    respondTo.senderPort = dns.senderPort;
+    respondTo.req = dns.req;
     responseHandled = false;
 }
 
 void InitialResponse::lookupDoneSendResponseNow(DNSInfo &dns, QUdpSocket *serversocket)
 {
-    if(whoWeNeedToRespondImmediatelyTo.domainString == dns.domainString && !responseHandled)
+    if(respondTo.domainString == dns.domainString && !responseHandled)
     {
-        qDebug() << "For initial response, matched:" << whoWeNeedToRespondImmediatelyTo.domainString << "with:" << dns.domainString;
-        if(dns.question.qtype == DNS_TYPE_A)
+        qDebug() << "For initial response, matched:" << respondTo.domainString << "with:" << dns.domainString;
+        if(respondTo.req.size() > 1)
         {
-            if(!dns.ipaddresses.empty())
+            if(dns.question.qtype == DNS_TYPE_A)
             {
-                qDebug() << "Morphing and responding with an A record! to:" << whoWeNeedToRespondImmediatelyTo.sender
-                         << whoWeNeedToRespondImmediatelyTo.senderPort << "with ips (first one):" << QHostAddress(dns.ipaddresses[0]).toString()
-                         << "request:" << whoWeNeedToRespondImmediatelyTo.req;
+                if(!dns.ipaddresses.empty())
+                {
+                    qDebug() << "Morphing and responding with an A record! to:" << respondTo.sender << respondTo.senderPort
+                             << "with ips (first one):" << QHostAddress(dns.ipaddresses[0]).toString()
+                            << "request:" << respondTo.req;
 
-                morphRequestIntoARecordResponse(whoWeNeedToRespondImmediatelyTo.req, dns.ipaddresses, dns.answeroffset);
-
-                qDebug() << "response:" << whoWeNeedToRespondImmediatelyTo.req;
-
-                serversocket->writeDatagram(whoWeNeedToRespondImmediatelyTo.req, whoWeNeedToRespondImmediatelyTo.sender, whoWeNeedToRespondImmediatelyTo.senderPort);
+                    morphRequestIntoARecordResponse(respondTo.req, dns.ipaddresses, dns.answeroffset);
+                    qDebug() << "response:" << respondTo.req;
+                    serversocket->writeDatagram(respondTo.req, respondTo.sender, respondTo.senderPort);
+                }
             }
-        }
-        else
-        {
-            *(quint16*)dns.res.data() = *(quint16*)whoWeNeedToRespondImmediatelyTo.req.data(); //match the request/response ids incase they aren't matching
-            qDebug() << "Responding to non A record! response:\n" << dns.res;
-            serversocket->writeDatagram(dns.res, whoWeNeedToRespondImmediatelyTo.sender, whoWeNeedToRespondImmediatelyTo.senderPort);
+            else
+            {
+                if(dns.res.size() > 1)
+                {
+                    *(quint16*)dns.res.data() = *(quint16*)respondTo.req.data(); //match the request/response ids in case they aren't matching
+                    qDebug() << "Responding to non A record! response:\n" << dns.res;
+                    serversocket->writeDatagram(dns.res, respondTo.sender, respondTo.senderPort);
+                }
+            }
         }
 
         responseHandled = true;

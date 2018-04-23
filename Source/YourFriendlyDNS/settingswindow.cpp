@@ -188,3 +188,8 @@ void SettingsWindow::on_autoinjectBox_stateChanged(int arg1)
 
     emit settingsUpdated();
 }
+
+void SettingsWindow::on_captureCaptive_clicked()
+{
+    emit autoCaptureCaptivePortals();
+}

@@ -55,6 +55,7 @@ public slots:
 private slots:
     void settingsUpdated();
     void queryRespondedTo(ListEntry e);
+    void autoCaptureCaptivePortals();
     void on_firstAddButton_clicked();
     void on_whitelistButton_clicked();
     void on_blacklistButton_clicked();
@@ -74,6 +75,7 @@ private:
     SmallHTTPServer *httpServer;
     QString settingspath, html;
 
+    void appendToBlacklist(ListEntry e);
     void refreshList();
     bool settingsSave();
     bool settingsLoad();

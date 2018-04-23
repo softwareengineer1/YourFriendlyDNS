@@ -45,9 +45,15 @@ SmallDNSServer::SmallDNSServer(QObject *parent)
     blacklist.push_back(ListEntry("*srv.nintendo.net"));
     blacklist.push_back(ListEntry("*d4c.nintendo.net"));
     blacklist.push_back(ListEntry("*eshop.nintendo.net"));
-    blacklist.push_back(ListEntry("*detectportal.firefox.com"));
-    blacklist.push_back(ListEntry("*ctest.cdn.nintendo.net"));
-    blacklist.push_back(ListEntry("*conntest.nintendowifi.net"));
+    //Known captive portals (to keep them captive)
+    blacklist.push_back(ListEntry("ctest.cdn.nintendo.net"));
+    blacklist.push_back(ListEntry("conntest.nintendowifi.net"));
+    blacklist.push_back(ListEntry("detectportal.firefox.com"));
+    blacklist.push_back(ListEntry("connectivitycheck.gstatic.com"));
+    blacklist.push_back(ListEntry("connectivitycheck.android.com"));
+    blacklist.push_back(ListEntry("clients1.google.com"));
+    blacklist.push_back(ListEntry("clients3.google.com"));
+    blacklist.push_back(ListEntry("captive.apple.com"));
 
     connect(&serversock, &QUdpSocket::readyRead, this, &SmallDNSServer::processDNSRequests);
     connect(&clientsock, &QUdpSocket::readyRead, this, &SmallDNSServer::processLookups);
@@ -98,8 +104,8 @@ void SmallDNSServer::processDNSRequests()
             bool whitelisted = false;
             for(ListEntry &whitelistedDomain : whitelist)
             {
-                std::string wild = whitelistedDomain.hostname.toStdString();
                 //std::string wild = whitelistedDomain.hostname.toUtf8().data();
+                std::string wild = whitelistedDomain.hostname.toStdString();
                 ////if(dns.domainString == whitelistedDomain.hostname)
                 if(GeneralTextCompare((char*)tame.c_str(), (char*)wild.c_str()))
                 {
@@ -145,8 +151,7 @@ void SmallDNSServer::processDNSRequests()
             //The option is there though to use either way that works for you.
             if(blockmode_returnlocalhost)
             {
-                //qDebug() << "Returning custom IP:" << QHostAddress(customIP).toString() << "for domain:" << dns.domainString;
-
+                qDebug() << "Returning custom IP:" << QHostAddress(customIP).toString() << "for domain:" << dns.domainString;
                 morphRequestIntoARecordResponse(datagram, customIP, dns.answeroffset);
                 serversock.writeDatagram(datagram, sender, senderPort);
                 emit queryRespondedTo(ListEntry(dns.domainString, customIP));
@@ -158,7 +163,6 @@ void SmallDNSServer::processDNSRequests()
         {
             for(DNSInfo &d : cachedDNSResponses)
             {
-                //if(wildcmp(d.domainString.toStdString().c_str(), compareDomain))
                 if(d.domainString == dns.domainString)
                 {
                     cacheNewIPsForDomain = (QDateTime::currentDateTime() > d.expiry);
@@ -172,7 +176,7 @@ void SmallDNSServer::processDNSRequests()
                         serversock.writeDatagram(datagram, sender, senderPort);
                         emit queryRespondedTo(ListEntry(d.domainString,d.ipaddresses[0]));
 
-                        qDebug() << "Returned cached ips (first one):" << QHostAddress(d.ipaddresses[0]) << "for domain:" << d.domainString;
+                        qDebug() << "Cached ips returned! (first one):" << QHostAddress(d.ipaddresses[0]) << "for domain:" << d.domainString;
                         break;
                     }
                     else
@@ -193,7 +197,6 @@ void SmallDNSServer::processDNSRequests()
                 dns.senderPort = senderPort;
                 InitialResponse *ir = new InitialResponse(dns);
                 connect(this, &SmallDNSServer::lookupDoneSendResponseNow, ir, &InitialResponse::lookupDoneSendResponseNow);
-                //connect(this, SIGNAL(lookupDoneSendResponseNow(DNSInfo&,QUdpSocket*)), irt, SLOT(lookupDoneSendResponseNow(DNSInfo&,QUdpSocket*)), Qt::DirectConnection);
             }
         }
         else
@@ -266,7 +269,6 @@ void SmallDNSServer::parseRequest(QByteArray &dnsrequest, DNSInfo &dns)
     dns.isValid = true;
 
     char *ptr = dnsrequest.data();
-
     memcpy(&dns.header, ptr, 12);
     //correcting values because of network byte order...
     dns.header.id = qFromBigEndian(dns.header.id);

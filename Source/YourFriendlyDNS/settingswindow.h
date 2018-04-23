@@ -99,6 +99,7 @@ signals:
     void settingsUpdated();
     void clearDNSCache();
     void setIPToFirstListening();
+    void autoCaptureCaptivePortals();
 
 private slots:
     void on_addButton_clicked();
@@ -112,6 +113,7 @@ private slots:
     void on_editindexButton_clicked();
     void on_ipinjectButton_clicked();
     void on_autoinjectBox_stateChanged(int arg1);
+    void on_captureCaptive_clicked();
 
 private:
     Ui::SettingsWindow *ui;

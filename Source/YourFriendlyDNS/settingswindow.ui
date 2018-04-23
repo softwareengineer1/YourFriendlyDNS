@@ -253,6 +253,13 @@
       </property>
      </widget>
     </item>
+    <item row="6" column="3">
+     <widget class="QPushButton" name="captureCaptive">
+      <property name="text">
+       <string>Auto-Capture Known Captive Portals!</string>
+      </property>
+     </widget>
+    </item>
    </layout>
   </widget>
  </widget>

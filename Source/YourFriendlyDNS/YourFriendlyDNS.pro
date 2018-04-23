@@ -32,17 +32,25 @@ SOURCES += \
         dnsserverwindow.cpp \
     smalldnsserver.cpp \
     settingswindow.cpp \
-    initialresponse.cpp
+    initialresponse.cpp \
+    indexhtml.cpp \
+    smallhttpserver.cpp \
+    messagesthread.cpp
 
 HEADERS += \
         dnsserverwindow.h \
     smalldnsserver.h \
     settingswindow.h \
-    initialresponse.h
+    initialresponse.h \
+    indexhtml.h \
+    smallhttpserver.h \
+    androidsuop.h \
+    messagesthread.h
 
 FORMS += \
         dnsserverwindow.ui \
-    settingswindow.ui
+    settingswindow.ui \
+    indexhtml.ui
 
 CONFIG += mobility
 MOBILITY = 

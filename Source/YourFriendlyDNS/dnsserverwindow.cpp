@@ -41,6 +41,7 @@ DNSServerWindow::DNSServerWindow(QWidget *parent) : QMainWindow(parent), ui(new 
     settings = new SettingsWindow();
     connect(settings, SIGNAL(settingsUpdated()), this, SLOT(settingsUpdated()));
     connect(settings, SIGNAL(setIPToFirstListening()), this, SLOT(setIPToFirstListening()));
+    connect(settings, SIGNAL(autoCaptureCaptivePortals()), this, SLOT(autoCaptureCaptivePortals()));
     connect(settings->indexhtml, SIGNAL(htmlChanged(QString&)), this, SLOT(htmlChanged(QString&)));
 
     settingspath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
@@ -140,6 +141,29 @@ void DNSServerWindow::queryRespondedTo(ListEntry e)
     }
 
     ui->dnsqueries->addTopLevelItem(new QTreeWidgetItem(QStringList() << ip << e.hostname));
+}
+
+void DNSServerWindow::autoCaptureCaptivePortals()
+{
+    appendToBlacklist(ListEntry("ctest.cdn.nintendo.net"));
+    appendToBlacklist(ListEntry("conntest.nintendowifi.net"));
+    appendToBlacklist(ListEntry("detectportal.firefox.com"));
+    appendToBlacklist(ListEntry("connectivitycheck.gstatic.com"));
+    appendToBlacklist(ListEntry("connectivitycheck.android.com"));
+    appendToBlacklist(ListEntry("clients1.google.com"));
+    appendToBlacklist(ListEntry("clients3.google.com"));
+    appendToBlacklist(ListEntry("captive.apple.com"));
+    refreshList();
+}
+
+void DNSServerWindow::appendToBlacklist(ListEntry e)
+{
+    for(ListEntry &entry : server->blacklist)
+    {
+        if(entry.hostname == e.hostname)
+            return;
+    }
+    server->blacklist.append(e);
 }
 
 void DNSServerWindow::on_firstAddButton_clicked()

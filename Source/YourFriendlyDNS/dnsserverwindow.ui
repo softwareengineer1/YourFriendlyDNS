@@ -15,8 +15,95 @@
   </property>
   <widget class="QWidget" name="centralWidget">
    <layout class="QGridLayout" name="gridLayout">
+    <item row="8" column="3">
+     <widget class="QRadioButton" name="blacklistButton">
+      <property name="minimumSize">
+       <size>
+        <width>250</width>
+        <height>0</height>
+       </size>
+      </property>
+      <property name="font">
+       <font>
+        <pointsize>8</pointsize>
+       </font>
+      </property>
+      <property name="text">
+       <string>Blacklist Mode</string>
+      </property>
+     </widget>
+    </item>
+    <item row="12" column="0" colspan="8">
+     <widget class="QTreeWidget" name="dnslist">
+      <property name="editTriggers">
+       <set>QAbstractItemView::NoEditTriggers</set>
+      </property>
+      <property name="alternatingRowColors">
+       <bool>true</bool>
+      </property>
+      <property name="indentation">
+       <number>0</number>
+      </property>
+      <property name="uniformRowHeights">
+       <bool>true</bool>
+      </property>
+      <attribute name="headerDefaultSectionSize">
+       <number>170</number>
+      </attribute>
+      <attribute name="headerMinimumSectionSize">
+       <number>150</number>
+      </attribute>
+      <column>
+       <property name="text">
+        <string>Redirect To IP</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>Hostname</string>
+       </property>
+      </column>
+     </widget>
+    </item>
+    <item row="14" column="0" colspan="8">
+     <widget class="QTreeWidget" name="dnsqueries">
+      <property name="editTriggers">
+       <set>QAbstractItemView::NoEditTriggers</set>
+      </property>
+      <property name="alternatingRowColors">
+       <bool>true</bool>
+      </property>
+      <property name="indentation">
+       <number>0</number>
+      </property>
+      <attribute name="headerCascadingSectionResizes">
+       <bool>false</bool>
+      </attribute>
+      <attribute name="headerDefaultSectionSize">
+       <number>170</number>
+      </attribute>
+      <attribute name="headerMinimumSectionSize">
+       <number>150</number>
+      </attribute>
+      <column>
+       <property name="text">
+        <string>IP Returned</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>Queried Hostname</string>
+       </property>
+      </column>
+     </widget>
+    </item>
     <item row="2" column="6" colspan="2">
      <widget class="QLabel" name="label_2">
+      <property name="font">
+       <font>
+        <pointsize>8</pointsize>
+       </font>
+      </property>
       <property name="text">
        <string>BTC: 1279WngWQUTV56UcTvzVAnNdR3Z7qb6R8j</string>
       </property>
@@ -40,12 +127,17 @@
        <pixmap resource="images.qrc">:/images/newBTCaddr_small.png</pixmap>
       </property>
       <property name="scaledContents">
-       <bool>true</bool>
+       <bool>false</bool>
       </property>
      </widget>
     </item>
     <item row="2" column="0" colspan="4">
      <widget class="QLabel" name="label_4">
+      <property name="font">
+       <font>
+        <pointsize>8</pointsize>
+       </font>
+      </property>
       <property name="text">
        <string>BCH: bitcoincash:qzh3knl0xeyrzrxm5paenewsmkm8r4t76glzxmzpqs</string>
       </property>
@@ -64,138 +156,31 @@
       </property>
      </widget>
     </item>
-    <item row="9" column="0" colspan="8">
-     <widget class="QTreeWidget" name="dnslist">
-      <property name="editTriggers">
-       <set>QAbstractItemView::NoEditTriggers</set>
-      </property>
-      <property name="alternatingRowColors">
-       <bool>true</bool>
-      </property>
-      <property name="indentation">
-       <number>0</number>
-      </property>
-      <property name="uniformRowHeights">
-       <bool>true</bool>
-      </property>
-      <attribute name="headerDefaultSectionSize">
-       <number>150</number>
-      </attribute>
-      <attribute name="headerMinimumSectionSize">
-       <number>150</number>
-      </attribute>
-      <column>
-       <property name="text">
-        <string>Redirect To IP</string>
-       </property>
-      </column>
-      <column>
-       <property name="text">
-        <string>Hostname</string>
-       </property>
-      </column>
-     </widget>
-    </item>
-    <item row="8" column="3" colspan="3">
+    <item row="11" column="3" colspan="3">
      <widget class="QLineEdit" name="ipEdit"/>
     </item>
-    <item row="6" column="0">
-     <widget class="QRadioButton" name="whitelistButton">
-      <property name="text">
-       <string>Whitelist Mode</string>
-      </property>
-      <property name="checked">
-       <bool>true</bool>
-      </property>
-     </widget>
-    </item>
-    <item row="10" column="2" colspan="2">
-     <widget class="QPushButton" name="secondAddButton">
-      <property name="text">
-       <string>^ Add to whitelist ^</string>
-      </property>
-     </widget>
-    </item>
-    <item row="8" column="0" colspan="3">
+    <item row="11" column="0" colspan="3">
      <widget class="QLineEdit" name="hostnameEdit"/>
     </item>
-    <item row="11" column="0" colspan="8">
-     <widget class="QTreeWidget" name="dnsqueries">
-      <property name="editTriggers">
-       <set>QAbstractItemView::NoEditTriggers</set>
-      </property>
-      <property name="alternatingRowColors">
-       <bool>true</bool>
-      </property>
-      <property name="indentation">
-       <number>0</number>
-      </property>
-      <attribute name="headerCascadingSectionResizes">
-       <bool>false</bool>
-      </attribute>
-      <attribute name="headerDefaultSectionSize">
-       <number>150</number>
-      </attribute>
-      <attribute name="headerMinimumSectionSize">
-       <number>150</number>
-      </attribute>
-      <column>
-       <property name="text">
-        <string>IP Returned</string>
-       </property>
-      </column>
-      <column>
-       <property name="text">
-        <string>Queried Hostname</string>
-       </property>
-      </column>
-     </widget>
-    </item>
-    <item row="7" column="0" colspan="2">
+    <item row="9" column="0" colspan="2">
      <widget class="QLabel" name="hostnameLabel">
       <property name="text">
-       <string>Hostname to add to list:</string>
+       <string>Hostname to add:</string>
       </property>
      </widget>
     </item>
-    <item row="10" column="4" colspan="2">
-     <widget class="QPushButton" name="removeButton">
-      <property name="text">
-       <string>Remove selected</string>
-      </property>
-     </widget>
-    </item>
-    <item row="3" column="5" rowspan="4" colspan="2">
-     <widget class="QPushButton" name="pushButton_2">
-      <property name="text">
-       <string>Save All</string>
-      </property>
-     </widget>
-    </item>
-    <item row="3" column="0" colspan="5">
+    <item row="6" column="0" colspan="5">
      <widget class="QCheckBox" name="initialMode">
+      <property name="font">
+       <font>
+        <pointsize>8</pointsize>
+       </font>
+      </property>
       <property name="text">
        <string>Initial Mode/Safe Mode (Block everything, so you can setup your whitelist/blacklist safely)</string>
       </property>
       <property name="checked">
        <bool>true</bool>
-      </property>
-     </widget>
-    </item>
-    <item row="3" column="7" rowspan="4">
-     <widget class="QPushButton" name="pushButton">
-      <property name="text">
-       <string>Settings</string>
-      </property>
-     </widget>
-    </item>
-    <item row="0" column="3" colspan="2">
-     <widget class="QLabel" name="label_6">
-      <property name="text">
-       <string/>
-      </property>
-      <property name="pixmap">
-       <pixmap resource="images.qrc">:/images/YFD.png</pixmap>
       </property>
      </widget>
     </item>
@@ -215,24 +200,10 @@
       </property>
      </widget>
     </item>
-    <item row="7" column="3" colspan="5">
+    <item row="9" column="3" colspan="5">
      <widget class="QLabel" name="label">
       <property name="text">
        <string>IP: (Leave blank unless mapping custom IPs)</string>
-      </property>
-     </widget>
-    </item>
-    <item row="6" column="1">
-     <widget class="QRadioButton" name="blacklistButton">
-      <property name="text">
-       <string>Blacklist Mode</string>
-      </property>
-     </widget>
-    </item>
-    <item row="8" column="6" colspan="2">
-     <widget class="QPushButton" name="firstAddButton">
-      <property name="text">
-       <string>Add</string>
       </property>
      </widget>
     </item>
@@ -243,6 +214,93 @@
       </property>
      </widget>
     </item>
+    <item row="13" column="4">
+     <widget class="QCommandLinkButton" name="removeButton">
+      <property name="text">
+       <string/>
+      </property>
+      <property name="icon">
+       <iconset resource="images.qrc">
+        <normaloff>:/images/minus.png</normaloff>:/images/minus.png</iconset>
+      </property>
+     </widget>
+    </item>
+    <item row="11" column="6" colspan="2">
+     <widget class="QCommandLinkButton" name="firstAddButton">
+      <property name="text">
+       <string/>
+      </property>
+      <property name="icon">
+       <iconset resource="images.qrc">
+        <normaloff>:/images/plus.png</normaloff>:/images/plus.png</iconset>
+      </property>
+     </widget>
+    </item>
+    <item row="13" column="3">
+     <widget class="QCommandLinkButton" name="secondAddButton">
+      <property name="text">
+       <string/>
+      </property>
+      <property name="icon">
+       <iconset resource="images.qrc">
+        <normaloff>:/images/plus.png</normaloff>:/images/plus.png</iconset>
+      </property>
+     </widget>
+    </item>
+    <item row="8" column="0" colspan="2">
+     <widget class="QRadioButton" name="whitelistButton">
+      <property name="minimumSize">
+       <size>
+        <width>150</width>
+        <height>0</height>
+       </size>
+      </property>
+      <property name="font">
+       <font>
+        <pointsize>8</pointsize>
+       </font>
+      </property>
+      <property name="text">
+       <string>Whitelist Mode</string>
+      </property>
+      <property name="checked">
+       <bool>true</bool>
+      </property>
+     </widget>
+    </item>
+    <item row="0" column="3" colspan="2">
+     <widget class="QLabel" name="label_6">
+      <property name="text">
+       <string/>
+      </property>
+      <property name="pixmap">
+       <pixmap resource="images.qrc">:/images/YFD.png</pixmap>
+      </property>
+     </widget>
+    </item>
+    <item row="6" column="7">
+     <widget class="QCommandLinkButton" name="settingsButton">
+      <property name="text">
+       <string/>
+      </property>
+      <property name="icon">
+       <iconset resource="images.qrc">
+        <normaloff>:/images/gear.gif</normaloff>:/images/gear.gif</iconset>
+      </property>
+     </widget>
+    </item>
+    <item row="6" column="6">
+     <widget class="QPushButton" name="saveButton">
+      <property name="font">
+       <font>
+        <pointsize>8</pointsize>
+       </font>
+      </property>
+      <property name="text">
+       <string>Save</string>
+      </property>
+     </widget>
+    </item>
    </layout>
   </widget>
  </widget>
@@ -250,15 +308,9 @@
  <tabstops>
   <tabstop>hostnameEdit</tabstop>
   <tabstop>ipEdit</tabstop>
-  <tabstop>firstAddButton</tabstop>
-  <tabstop>pushButton_2</tabstop>
-  <tabstop>pushButton</tabstop>
   <tabstop>dnslist</tabstop>
   <tabstop>dnsqueries</tabstop>
-  <tabstop>secondAddButton</tabstop>
   <tabstop>initialMode</tabstop>
-  <tabstop>whitelistButton</tabstop>
-  <tabstop>blacklistButton</tabstop>
  </tabstops>
  <resources>
   <include location="images.qrc"/>

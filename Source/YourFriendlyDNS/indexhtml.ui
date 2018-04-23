@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>IndexHTML</class>
+ <widget class="QMainWindow" name="IndexHTML">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>800</width>
+    <height>600</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>index.html</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QGridLayout" name="gridLayout">
+    <item row="0" column="0">
+     <layout class="QVBoxLayout" name="verticalLayout">
+      <item>
+       <widget class="QPlainTextEdit" name="html">
+        <property name="plainText">
+         <string>&lt;html&gt;
+&lt;head&gt;&lt;title&gt;Your Landing Page! &lt;/title&gt;
+&lt;body bgcolor=&quot;skyblue&quot;&gt;
+&lt;input type=&quot;text&quot; name=&quot;urlfield&quot; id=&quot;urlfield&quot; maxlength=&quot;200&quot; size=&quot;75&quot;&gt;&lt;/input&gt;&lt;input type=&quot;button&quot; name=&quot;send&quot; id=&quot;send&quot; value=&quot;Go&quot; onclick=&quot;go()&quot;&gt;&lt;/input&gt;
+&lt;h1&gt; Your Landing Page!&lt;/h1&gt; &lt;a href=&quot;https://startpage.com/&quot;&gt;Start!&lt;/a&gt;
+&lt;script&gt;
+function go() {
+    parent.window.location.href=document.getElementById(&quot;urlfield&quot;).value;
+}
+&lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="okButton">
+        <property name="text">
+         <string>OK</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+   </layout>
+  </widget>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

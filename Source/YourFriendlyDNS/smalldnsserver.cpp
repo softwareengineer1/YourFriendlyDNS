@@ -24,12 +24,12 @@ You should have received a copy of the GNU General Public License along
 with this program; if not, write to the Free Software Foundation, Inc.,
 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA. */
 
-SmallDNSServer::SmallDNSServer(QObject *parent) : QObject(parent)
+SmallDNSServer::SmallDNSServer(QObject *parent)
 {
-    connect(&serversock, SIGNAL(readyRead()), this, SLOT(processDNSRequests()), Qt::DirectConnection);
-    connect(&clientsock, SIGNAL(readyRead()), this, SLOT(processLookups()), Qt::DirectConnection);
+    Q_UNUSED(parent);
     ipToRespondWith = QHostAddress("127.0.0.1").toIPv4Address();
-    serverPortForAndroid = 5333; //On android I can't bind as root to port 53, so use a high enough port and iptables as root to redirect 53 -> 5354 instead
+    dnsServerPort = 53; //port 53 by default android will figure it out and go 5333 by default
+    httpServerPort = 80;
     cachedMinutesValid = 5;
 
     whitelistmode = initialMode = blockmode_returnlocalhost = true;
@@ -45,44 +45,17 @@ SmallDNSServer::SmallDNSServer(QObject *parent) : QObject(parent)
     blacklist.push_back(ListEntry("*srv.nintendo.net"));
     blacklist.push_back(ListEntry("*d4c.nintendo.net"));
     blacklist.push_back(ListEntry("*eshop.nintendo.net"));
-}
+    blacklist.push_back(ListEntry("*detectportal.firefox.com"));
+    blacklist.push_back(ListEntry("*ctest.cdn.nintendo.net"));
+    blacklist.push_back(ListEntry("*conntest.nintendowifi.net"));
 
-SmallDNSServer::~SmallDNSServer()
-{
-#ifdef Q_OS_ANDROID
-    QProcess su;
-    su.start("su");
-    su.waitForStarted();
-
-    su.write(QString("iptables -D INPUT -p udp --dport %1 -j ACCEPT\n").arg(serverPortForAndroid).toUtf8());
-    su.write(QString("iptables -t nat -D PREROUTING -p udp --dport 53 -j REDIRECT --to-ports %1\n").arg(serverPortForAndroid).toUtf8());
-    su.closeWriteChannel();
-#endif
+    connect(&serversock, &QUdpSocket::readyRead, this, &SmallDNSServer::processDNSRequests);
+    connect(&clientsock, &QUdpSocket::readyRead, this, &SmallDNSServer::processLookups);
 }
 
 bool SmallDNSServer::startServer(QHostAddress address, quint16 port, bool reuse)
-{
-    Q_UNUSED(port);
-#ifdef Q_OS_ANDROID
-
-    //Run su, enable ipv4 forwarding, and do iptables redirect from port 53(dns) to 5354 (where this server is binded on android)
-    QProcess su;
-    su.start("su"); //First time running it, accept the root prompt
-    if(!su.waitForStarted())
-        return false;
-
-    su.write("sysctl -w net.ipv4.ip_forward=1\n");
-    su.write(QString("iptables -A INPUT -p udp --dport %1 -j ACCEPT\n").arg(serverPortForAndroid).toUtf8());
-    su.write(QString("iptables -t nat -A PREROUTING -p udp --dport 53 -j REDIRECT --to-ports %1\n").arg(serverPortForAndroid).toUtf8());
-    su.closeWriteChannel();
-
-    if(!su.waitForFinished())
-        return false;
-
-    return serversock.bind(address, serverPortForAndroid, reuse ? QUdpSocket::ReuseAddressHint : QUdpSocket::DefaultForPlatform);
-#else
+{ 
     return serversock.bind(address, port, reuse ? QUdpSocket::ReuseAddressHint : QUdpSocket::DefaultForPlatform);
-#endif
 }
 
 void SmallDNSServer::clearDNSCache()
@@ -99,7 +72,7 @@ QHostAddress SmallDNSServer::selectRandomDNSServer()
         realdns.append("208.67.220.220");
     }
 
-    return QHostAddress(realdns[rand() % realdns.size()]);
+    return QHostAddress(realdns[QRandomGenerator::global()->bounded(realdns.size())]);
 }
 
 void SmallDNSServer::processDNSRequests()
@@ -118,14 +91,15 @@ void SmallDNSServer::processDNSRequests()
         parseRequest(datagram, dns);
 
         if(!dns.isValid) continue;
-        bool cacheNewIPForDomain = true;
-        std::string tame = (char*)dns.domainString.toUtf8().data();
+        bool cacheNewIPsForDomain = true;
+        std::string tame = dns.domainString.toStdString(); //(char*)dns.domainString.toUtf8().data();
         if(whitelistmode)
         {
             bool whitelisted = false;
             for(ListEntry &whitelistedDomain : whitelist)
             {
-                std::string wild = whitelistedDomain.hostname.toUtf8().data();
+                std::string wild = whitelistedDomain.hostname.toStdString();
+                //std::string wild = whitelistedDomain.hostname.toUtf8().data();
                 ////if(dns.domainString == whitelistedDomain.hostname)
                 if(GeneralTextCompare((char*)tame.c_str(), (char*)wild.c_str()))
                 {
@@ -140,18 +114,19 @@ void SmallDNSServer::processDNSRequests()
                     break;
                 }
             }
-            cacheNewIPForDomain = whitelisted;
+            cacheNewIPsForDomain = whitelisted;
         }
         else
         {
             bool notblacklisted = true;
             for(ListEntry &blacklistedDomain : blacklist)
             {
+                //std::string wild = blacklistedDomain.hostname.toUtf8().data();
                 std::string wild = blacklistedDomain.hostname.toStdString();
                 //if(dns.domainString == blacklistedDomain.hostname)
                 if(GeneralTextCompare((char*)tame.c_str(), (char*)wild.c_str()))
                 {
-                    qDebug() << "Matched BlackList!" << blacklistedDomain.hostname << "to:" << dns.domainString;
+                    //qDebug() << "Matched BlackList!" << blacklistedDomain.hostname << "to:" << dns.domainString;
                     notblacklisted = false;
                     //It's blacklist mode and in the blacklist, so it should return your custom IP! And your manually specified one if you did specify a particular one
                     shouldReturnCustomIP = true;
@@ -160,17 +135,17 @@ void SmallDNSServer::processDNSRequests()
                     break;
                 }
             }
-            cacheNewIPForDomain = notblacklisted;
+            cacheNewIPsForDomain = notblacklisted;
         }
 
         if(shouldReturnCustomIP || initialMode)
         {
             //For just being straight up like fk you! here's localhost!! lol or not responding at all,
-            //but returning localhost is better I think, as not responding might make our dns server seem down cause it to user another if it knows another one.
+            //but returning localhost is better I think, as not responding might make our dns server seem down cause it to use another if it knows another one.
             //The option is there though to use either way that works for you.
             if(blockmode_returnlocalhost)
             {
-                qDebug() << "Returning custom IP:" << QHostAddress(customIP).toString() << "for domain:" << dns.domainString;
+                //qDebug() << "Returning custom IP:" << QHostAddress(customIP).toString() << "for domain:" << dns.domainString;
 
                 morphRequestIntoARecordResponse(datagram, customIP, dns.answeroffset);
                 serversock.writeDatagram(datagram, sender, senderPort);
@@ -179,36 +154,35 @@ void SmallDNSServer::processDNSRequests()
             else
                 emit queryRespondedTo(ListEntry(dns.domainString));
         }
-        else if(dns.question.qtype == 1)
+        else if(dns.question.qtype == DNS_TYPE_A)
         {
-            if(!cachedDNSResponses.empty())
+            for(DNSInfo &d : cachedDNSResponses)
             {
-                for(DNSInfo &d : cachedDNSResponses)
+                //if(wildcmp(d.domainString.toStdString().c_str(), compareDomain))
+                if(d.domainString == dns.domainString)
                 {
-                    //if(wildcmp(d.domainString.toStdString().c_str(), compareDomain))
-                    if(d.domainString == dns.domainString)
+                    cacheNewIPsForDomain = (QDateTime::currentDateTime() > d.expiry);
+                    if(cacheNewIPsForDomain)
+                        break;
+
+                    if(!d.ipaddresses.empty())
                     {
-                        cacheNewIPForDomain = (QDateTime::currentDateTime() > d.expiry);
+                        //Let's use our cached IPs, and morph this request into a response containing them as appended dns answers
+                        morphRequestIntoARecordResponse(datagram, d.ipaddresses, d.answeroffset);
+                        serversock.writeDatagram(datagram, sender, senderPort);
+                        emit queryRespondedTo(ListEntry(d.domainString,d.ipaddresses[0]));
 
-                        if(!d.ipaddresses.empty())
-                        {
-                            //Let's use our cached IPs, and morph this request into a response containing them as appended dns answers
-                            morphRequestIntoARecordResponse(datagram, d.ipaddresses, d.answeroffset);
-                            serversock.writeDatagram(datagram, sender, senderPort);
-                            emit queryRespondedTo(ListEntry(d.domainString,d.ipaddresses[0]));
-
-                            qDebug() << "Returned cached ips (first one):" << QHostAddress(d.ipaddresses[0]) << "for domain:" << d.domainString << "stale ips?:" << cacheNewIPForDomain;
-                            break;
-                        }
-                        else
-                            break;
+                        qDebug() << "Returned cached ips (first one):" << QHostAddress(d.ipaddresses[0]) << "for domain:" << d.domainString;
+                        break;
                     }
+                    else
+                        break;
                 }
             }
 
             //Here's where we forward the received request to a real dns server, if not cached yet or its time to update the cache for this domain
             //Only executes if the domain is whitelisted or not blacklisted (depending on which mode you're using)
-            if(cacheNewIPForDomain)
+            if(cacheNewIPsForDomain)
             {
                 QHostAddress realdnsserver = selectRandomDNSServer();
                 qDebug() << "Making DNS request for domain:" << dns.domainString << "Using real DNS:" << realdnsserver;
@@ -217,15 +191,16 @@ void SmallDNSServer::processDNSRequests()
                 dns.req = datagram;
                 dns.sender = sender;
                 dns.senderPort = senderPort;
-                InitialResponse *irt = new InitialResponse(dns);
-                connect(this, SIGNAL(lookupDoneSendResponseNow(DNSInfo&,QUdpSocket*)), irt, SLOT(lookupDoneSendResponseNow(DNSInfo&,QUdpSocket*)), Qt::DirectConnection);
+                InitialResponse *ir = new InitialResponse(dns);
+                connect(this, &SmallDNSServer::lookupDoneSendResponseNow, ir, &InitialResponse::lookupDoneSendResponseNow);
+                //connect(this, SIGNAL(lookupDoneSendResponseNow(DNSInfo&,QUdpSocket*)), irt, SLOT(lookupDoneSendResponseNow(DNSInfo&,QUdpSocket*)), Qt::DirectConnection);
             }
         }
         else
         {
             //If it's not an A record request, but it's still a host in the whitelist/not in the blacklist, then let's handle it anyway to be complete
             //NOTE: Unlike for A records I don't interpret them fully, just proxy it (forward to real dns server, get response, and pass it back to requester)
-            if(cacheNewIPForDomain)
+            if(cacheNewIPsForDomain)
             {
                 QHostAddress realdnsserver = selectRandomDNSServer();
                 qDebug() << "Making non A record request for domain:" << dns.domainString << "Using DNS Server:" << realdnsserver;
@@ -234,8 +209,8 @@ void SmallDNSServer::processDNSRequests()
                 dns.req = datagram;
                 dns.sender = sender;
                 dns.senderPort = senderPort;
-                InitialResponse *irt = new InitialResponse(dns);
-                connect(this, SIGNAL(lookupDoneSendResponseNow(DNSInfo&,QUdpSocket*)), irt, SLOT(lookupDoneSendResponseNow(DNSInfo&,QUdpSocket*)), Qt::DirectConnection);
+                InitialResponse *ir = new InitialResponse(dns);
+                connect(this, &SmallDNSServer::lookupDoneSendResponseNow, ir, &InitialResponse::lookupDoneSendResponseNow);
             }
         }
     }
@@ -258,7 +233,7 @@ void SmallDNSServer::processLookups()
         {
             emit lookupDoneSendResponseNow(dns, &serversock);
 
-            if(!dns.ipaddresses.empty()) //my cache is only for A record responses containing ip addresses, if there's no ips it's not the right response to cache
+            if(!dns.ipaddresses.empty() || dns.question.qtype == DNS_TYPE_A) //my cache is only for A record responses containing ip addresses, if there's no ips it's not the right response to cache
             {
                 dns.expiry = QDateTime::currentDateTime().addSecs(cachedMinutesValid * 60);
                 //Update cache if already exists
@@ -288,15 +263,9 @@ void SmallDNSServer::parseRequest(QByteArray &dnsrequest, DNSInfo &dns)
         dns.isValid = false;
         return;
     }
+    dns.isValid = true;
 
     char *ptr = dnsrequest.data();
-    /*if((ptr[2] & 0x80) != 0)
-    {
-        dns.isValid = false;
-        return;
-    }*/
-
-    dns.isValid = true;
 
     memcpy(&dns.header, ptr, 12);
     //correcting values because of network byte order...
@@ -319,18 +288,10 @@ void SmallDNSServer::parseResponse(QByteArray &dnsresponse, DNSInfo &dns)
         dns.isValid = false;
         return;
     }
-
-    char *ptr = dnsresponse.data();
-    /*if((ptr[2] & 0x80) == 0)
-    {
-        dns.isValid = false;
-        return;
-    }*/
-
     dns.isValid = dns.isResponse = true;
 
+    char *ptr = dnsresponse.data();
     memcpy(&dns.header, ptr, 12);
-    //correcting values because of network byte order...
     dns.header.id = qFromBigEndian(dns.header.id);
     dns.header.q_count = qFromBigEndian(dns.header.q_count);
     dns.header.ans_count = qFromBigEndian(dns.header.ans_count);
@@ -349,12 +310,14 @@ QString SmallDNSServer::getDomainString(const QByteArray &dnsmessage, DNSInfo &d
 {
     QString fullname;
     char temp[64];
-    quint8 *pointer = (quint8*)&dnsmessage.data()[12], *pointerorigin = (quint8*)&dnsmessage.data()[0];
+    quint8 *pointer = (quint8*)&dnsmessage.data()[DNS_HEADER_SIZE], *pointerorigin = (quint8*)&dnsmessage.data()[0];
+    quint8 *pointer_end = (quint8*)&dnsmessage.data()[dnsmessage.size()];
     quint8 len;
     do
     {
         len = *pointer++;
-        if(len == 0 || len > 63) break;
+        if(len == 0) break;
+        if(len > 63 || (pointer + len) >= pointer_end) { dns.isValid = false; return fullname; }
         memcpy(temp, pointer, len);
         temp[len] = 0;
 
@@ -366,9 +329,11 @@ QString SmallDNSServer::getDomainString(const QByteArray &dnsmessage, DNSInfo &d
 
     dns.domainString = fullname;
 
-    dns.question.qtype = qFromBigEndian(*(quint16*)pointer);
+    if(pointer < pointer_end)
+        dns.question.qtype = qFromBigEndian(*(quint16*)pointer);
     pointer += 2;
-    dns.question.qclass = qFromBigEndian(*(quint16*)pointer);
+    if(pointer < pointer_end)
+        dns.question.qclass = qFromBigEndian(*(quint16*)pointer);
     pointer += 2;
 
     dns.answeroffset = (pointer - pointerorigin);
@@ -382,10 +347,11 @@ QString SmallDNSServer::getDomainString(const QByteArray &dnsmessage, DNSInfo &d
 
 void SmallDNSServer::getHostAddresses(const QByteArray &dnsresponse, DNSInfo &dns)
 {
-    if(!dns.isResponse || dns.question.qtype != 1) return; //if not a response and containing an A record, then there's no IPs here to grab...
+    if(!dns.isResponse || dns.question.qtype != DNS_TYPE_A) return; //if not a response and containing an A record, then there's no IPs here to grab...
 
     ANSWER answer;
     const char *ptr = &dnsresponse.data()[dns.answeroffset];
+    const char *ptr_end = &dnsresponse.data()[dnsresponse.size()];
 
     for(quint16 i = 0; i < dns.header.ans_count; i++)
     {
@@ -403,7 +369,7 @@ void SmallDNSServer::getHostAddresses(const QByteArray &dnsresponse, DNSInfo &dn
         qDebug() << "Interpreted answer name:" << answer.name << "type:" << answer.type << "rclass:" << answer.rclass << "ttl:" << answer.ttl << "rdlength:" << answer.rdlength;
 
         quint32 ip;
-        if(answer.type == 1 && answer.rdlength == 4) //if it's an A record which should be 4 bytes
+        if(answer.type == DNS_TYPE_A && answer.rdlength == 4) //if it's an A record which should be 4 bytes
         {
             memcpy(&ip, ptr, 4);
             ip = qFromBigEndian(ip);
@@ -412,7 +378,10 @@ void SmallDNSServer::getHostAddresses(const QByteArray &dnsresponse, DNSInfo &dn
             dns.ipaddresses.push_back(ip);
         }
 
-        ptr += answer.rdlength;
+        if((ptr + answer.rdlength) < ptr_end)
+            ptr += answer.rdlength;
+        else
+            break;
     }
 }
 

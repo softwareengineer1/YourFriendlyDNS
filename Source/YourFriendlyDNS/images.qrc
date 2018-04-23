@@ -3,5 +3,8 @@
         <file>newBCHaddr_small.png</file>
         <file>newBTCaddr_small.png</file>
         <file>YFD.png</file>
+        <file>minus.png</file>
+        <file>plus.png</file>
+        <file>gear.gif</file>
     </qresource>
 </RCC>

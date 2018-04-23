@@ -52,6 +52,12 @@ struct DNS_HEADER
     unsigned short add_count; // number of resource entries
 };
 
+#define DNS_HEADER_SIZE 12
+#define DNS_HEADER_FLAGS_OFFSET 2
+#define DNS_HEADER_ANSWER_COUNT_OFFSET 7
+#define AUTHORITATIVE_ANSWER_FLAG (1 << 7)
+#define DNS_TYPE_A 1
+
 struct QUESTION
 {
     unsigned short qtype;
@@ -81,7 +87,7 @@ public:
     DNSInfo(const DNSInfo &info)
     {
         memcpy(&header, &info.header, sizeof(header));
-        memcpy(&question, &info.question, sizeof(question));
+        //memcpy(&question, &info.question, sizeof(question));
         domainString = info.domainString;
 
         answeroffset = info.answeroffset;

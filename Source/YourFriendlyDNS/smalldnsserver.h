@@ -31,7 +31,9 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include <QHostAddress>
 #include <QHostInfo>
 #include <QtEndian>
+#include <QtCore>
 #include <QProcess>
+#include "androidsuop.h"
 #include "initialresponse.h"
 
 /*By Kirk J. Krauss, August 26, 2008
@@ -49,14 +51,15 @@ class SmallDNSServer : public QObject
     Q_OBJECT
 public:
     explicit SmallDNSServer(QObject *parent = nullptr);
-    ~SmallDNSServer();
     bool startServer(QHostAddress address = QHostAddress::AnyIPv4, quint16 port = 53, bool reuse = false);
     QString getDomainString(const QByteArray &dnsmessage, DNSInfo &dns);
+
     bool whitelistmode, blockmode_returnlocalhost, initialMode;
     quint32 ipToRespondWith, cachedMinutesValid;
-    quint16 serverPortForAndroid;
+    quint16 dnsServerPort, httpServerPort;
     QVector<ListEntry> whitelist,blacklist;
     QVector<QString> realdns;
+    QVector<quint32> listeningIPs;
     QUdpSocket serversock;
 
 private:

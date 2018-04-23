@@ -26,6 +26,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA. */
 
 #include <QMainWindow>
+#include "indexhtml.h"
 
 /*MUST BLOCK:
 http://sun.hac.lp1.d4c.nintendo.net:443 - System Update Server/Nag
@@ -77,20 +78,27 @@ class SettingsWindow : public QMainWindow
 public:
     explicit SettingsWindow(QWidget *parent = 0);
     ~SettingsWindow();
+    IndexHTML *indexhtml;
     QVector<QString> returnRealDNSServers();
     void clearDNSServers();
     bool isExisting(const QString &dns);
     void appendDNSServer(const QString &dns);
     void setRespondingIP(const QString &ip);
     QString getRespondingIP();
+    QString getDNSServerPort();
+    QString getHTTPServerPort();
     void setCachedMinutesValid(quint32 minutesValid);
+    void setDNSServerPort(quint16 dnsServerPort);
+    void setHTTPServerPort(quint16 httpServerPort);
     quint32 getCachedMinutesValid();
     void setBlockOptionNoResponse();
-    bool blockmode_localhost;
+    void setAutoInject(bool checked);
+    bool blockmode_localhost, autoinject;
 
 signals:
     void settingsUpdated();
     void clearDNSCache();
+    void setIPToFirstListening();
 
 private slots:
     void on_addButton_clicked();
@@ -101,6 +109,9 @@ private slots:
     void on_respondingIP_editingFinished();
     void on_edit_dnsserver_returnPressed();
     void on_clearCacheButton_clicked();
+    void on_editindexButton_clicked();
+    void on_ipinjectButton_clicked();
+    void on_autoinjectBox_stateChanged(int arg1);
 
 private:
     Ui::SettingsWindow *ui;

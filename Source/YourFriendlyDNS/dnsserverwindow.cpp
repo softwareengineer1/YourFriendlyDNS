@@ -28,13 +28,20 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 DNSServerWindow::DNSServerWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::DNSServerWindow)
 {
     ui->setupUi(this);
-    settings = new SettingsWindow(this);
+    server = nullptr;
+    httpServer = nullptr;
+
+    qRegisterMetaType<ListEntry>("ListEntry");
+
+    messagesThread = new MessagesThread();
+    connect(messagesThread, SIGNAL(finished()), this, SLOT(deleteLater()));
+    connect(messagesThread, SIGNAL(serversInitialized()), this, SLOT(serversInitialized()));
+    messagesThread->start();
+
+    settings = new SettingsWindow();
     connect(settings, SIGNAL(settingsUpdated()), this, SLOT(settingsUpdated()));
-    server = new SmallDNSServer();
-    connect(server, SIGNAL(queryRespondedTo(ListEntry)), this, SLOT(queryRespondedTo(ListEntry)));
-    connect(settings, SIGNAL(clearDNSCache()), server, SLOT(clearDNSCache()));
-    if(server->startServer())
-        qDebug() << "DNS server started on address:" << server->serversock.localAddress() << "and port:" << server->serversock.localPort();
+    connect(settings, SIGNAL(setIPToFirstListening()), this, SLOT(setIPToFirstListening()));
+    connect(settings->indexhtml, SIGNAL(htmlChanged(QString&)), this, SLOT(htmlChanged(QString&)));
 
     settingspath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
     QDir d{settingspath};
@@ -44,6 +51,34 @@ DNSServerWindow::DNSServerWindow(QWidget *parent) : QMainWindow(parent), ui(new 
     settingspath += QDir::separator();
     settingspath += "YourFriendlyDNS.settings";
     qDebug() << "YourFriendlyDNS settings file path:" << settingspath;
+
+    #ifdef Q_OS_ANDROID
+    ui->settingsButton->setIconSize(QSize(128,128));
+    ui->firstAddButton->setIconSize(QSize(64,64));
+    ui->secondAddButton->setIconSize(QSize(64,64));
+    ui->removeButton->setIconSize(QSize(64,64));
+    #endif
+}
+
+DNSServerWindow::~DNSServerWindow()
+{
+    settingsSave();
+    if(httpServer)
+        delete httpServer;
+    if(server)
+        delete server;
+    if(settings)
+        delete settings;
+
+    delete ui;
+}
+
+void DNSServerWindow::serversInitialized()
+{
+    server = AppData::get()->dnsServer;
+    httpServer = AppData::get()->httpServer;
+    connect(server, SIGNAL(queryRespondedTo(ListEntry)), this, SLOT(queryRespondedTo(ListEntry)));
+    connect(settings, SIGNAL(clearDNSCache()), server, SLOT(clearDNSCache()));
     settingsLoad();
     settingsUpdated();
 
@@ -55,29 +90,39 @@ DNSServerWindow::DNSServerWindow(QWidget *parent) : QMainWindow(parent), ui(new 
         {
             if(list[nIter].protocol() == QAbstractSocket::IPv4Protocol)
             {
-                listeningips += list[nIter].toString();
-                if((nIter + 2) != (list.count() - 1))
-                    listeningips += ", ";
+                server->listeningIPs.append(QHostAddress(list[nIter].toString()).toIPv4Address());
+                listeningips += list[nIter].toString() + ", ";
             }
         }
     }
+    listeningips.truncate(listeningips.size()-2);
     ui->listeningIPs->setText(listeningips);
 }
 
-DNSServerWindow::~DNSServerWindow()
+void DNSServerWindow::htmlChanged(QString &html)
 {
-    settingsSave();
-    delete server;
-    delete settings;
-    delete ui;
+    if(httpServer)
+        httpServer->setHTML(html);
+}
+
+void DNSServerWindow::setIPToFirstListening()
+{
+    if(server && settings)
+    {
+        if(!server->listeningIPs.empty())
+            settings->setRespondingIP(QHostAddress(server->listeningIPs[0]).toString());
+    }
 }
 
 void DNSServerWindow::settingsUpdated()
 {
-    server->blockmode_returnlocalhost = settings->blockmode_localhost;
-    server->ipToRespondWith = QHostAddress(settings->getRespondingIP()).toIPv4Address();
-    server->cachedMinutesValid = settings->getCachedMinutesValid();
-    server->realdns = settings->returnRealDNSServers();
+    if(server && settings)
+    {
+        server->blockmode_returnlocalhost = settings->blockmode_localhost;
+        server->ipToRespondWith = QHostAddress(settings->getRespondingIP()).toIPv4Address();
+        server->cachedMinutesValid = settings->getCachedMinutesValid();
+        server->realdns = settings->returnRealDNSServers();
+    }
 }
 
 void DNSServerWindow::queryRespondedTo(ListEntry e)
@@ -135,6 +180,8 @@ void DNSServerWindow::on_firstAddButton_clicked()
 
     if(append)
         ui->dnslist->addTopLevelItem(new QTreeWidgetItem(QStringList() << ui->ipEdit->text() << ui->hostnameEdit->text()));
+
+    refreshList();
 }
 
 void DNSServerWindow::refreshList()
@@ -166,7 +213,6 @@ void DNSServerWindow::refreshList()
 void DNSServerWindow::on_whitelistButton_clicked()
 {
     server->whitelistmode = true;
-    ui->secondAddButton->setText("^ Add to whitelist ^");
     ui->whitelistButton->setChecked(true);
     refreshList();
 }
@@ -174,14 +220,8 @@ void DNSServerWindow::on_whitelistButton_clicked()
 void DNSServerWindow::on_blacklistButton_clicked()
 {
     server->whitelistmode = false;
-    ui->secondAddButton->setText("^ Add to blacklist ^");
     ui->blacklistButton->setChecked(true);
     refreshList();
-}
-
-void DNSServerWindow::on_pushButton_clicked()
-{
-    settings->show();
 }
 
 bool DNSServerWindow::settingsSave()
@@ -190,11 +230,20 @@ bool DNSServerWindow::settingsSave()
     if(file.open(QFile::WriteOnly))
     {
         QJsonObject json;
+        json["version"] = "1.1";
         json["initialMode"] = server->initialMode;
         json["whitelistmode"] = server->whitelistmode;
         json["blockmode_returnlocalhost"] = server->blockmode_returnlocalhost;
+        json["autoinjectip"] = settings->autoinject;
+        server->ipToRespondWith = QHostAddress(settings->getRespondingIP()).toIPv4Address();
         json["ipToRespondWith"] = (int)server->ipToRespondWith;
         json["cachedMinutesValid"] = (int)server->cachedMinutesValid;
+        server->dnsServerPort = settings->getDNSServerPort().toInt();
+        json["dnsServerPort"] = server->dnsServerPort;
+        server->httpServerPort = settings->getHTTPServerPort().toInt();
+        json["httpServerPort"] = server->httpServerPort;
+        html = settings->indexhtml->getHTML();
+        json["html"] = html;
 
         QJsonArray dnsarray;
         foreach(const QString dns, server->realdns)
@@ -256,15 +305,52 @@ bool DNSServerWindow::settingsLoad()
         if(!settings->blockmode_localhost)
             settings->setBlockOptionNoResponse();
     }
+    if(json.contains("autoinjectip") && json["autoinjectip"].isBool())
+    {
+        settings->autoinject = json["autoinjectip"].toBool();
+        if(settings->autoinject)
+            setIPToFirstListening();
+        settings->setAutoInject(settings->autoinject);
+    }
+
     if(json.contains("ipToRespondWith") && json["ipToRespondWith"].isDouble())
     {
         server->ipToRespondWith = json["ipToRespondWith"].toInt();
+        qDebug() << "Loading respondingIP:" << QHostAddress(server->ipToRespondWith).toString();
         settings->setRespondingIP(QHostAddress(server->ipToRespondWith).toString());
     }
     if(json.contains("cachedMinutesValid") && json["cachedMinutesValid"].isDouble())
     {
         server->cachedMinutesValid = json["cachedMinutesValid"].toInt();
         settings->setCachedMinutesValid(server->cachedMinutesValid);
+    }
+
+    if(json.contains("dnsServerPort") && json["dnsServerPort"].isDouble())
+    {
+        server->dnsServerPort = json["dnsServerPort"].toInt();
+        settings->setDNSServerPort(server->dnsServerPort);
+    }
+    else
+        server->dnsServerPort = 53;
+
+    qDebug() << "Using dns server port:" << server->dnsServerPort;
+
+    if(json.contains("httpServerPort") && json["httpServerPort"].isDouble())
+    {
+        server->httpServerPort = json["httpServerPort"].toInt();
+        settings->setHTTPServerPort(server->httpServerPort);
+    }
+    else
+        server->httpServerPort = 80;
+
+    qDebug() << "Using http server port:" << server->httpServerPort;
+
+    if(json.contains("html") && json["html"].isString())
+    {
+        html = json["html"].toString();
+        htmlChanged(html);
+        if(settings && settings->indexhtml)
+            settings->indexhtml->setHTML(html);
     }
 
     if(json.contains("real_dns_servers") && json["real_dns_servers"].isArray())
@@ -343,7 +429,7 @@ void DNSServerWindow::on_initialMode_stateChanged(int arg1)
     qDebug() << "initial mode:" << server->initialMode;
 }
 
-void DNSServerWindow::on_pushButton_2_clicked()
+void DNSServerWindow::on_saveButton_clicked()
 {
     settingsSave();
 }
@@ -394,9 +480,10 @@ void DNSServerWindow::on_ipEdit_returnPressed()
 void DNSServerWindow::on_secondAddButton_clicked()
 {
     bool alreadyAdded = false;
+    auto selected = ui->dnsqueries->selectedItems();
     if(server->whitelistmode)
-    {
-        for(QTreeWidgetItem *i : ui->dnsqueries->selectedItems())
+    {   
+        for(QTreeWidgetItem *i : selected)
         {
             for(ListEntry &e : server->whitelist)
             {
@@ -413,7 +500,7 @@ void DNSServerWindow::on_secondAddButton_clicked()
     }
     else
     {
-        for(QTreeWidgetItem *i : ui->dnsqueries->selectedItems())
+        for(QTreeWidgetItem *i : selected)
         {
             for(ListEntry &e : server->blacklist)
             {
@@ -429,4 +516,8 @@ void DNSServerWindow::on_secondAddButton_clicked()
         }
     }
     refreshList();
+}
+void DNSServerWindow::on_settingsButton_clicked()
+{
+    settings->show();
 }

@@ -28,11 +28,13 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 SettingsWindow::SettingsWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::SettingsWindow)
 {
     ui->setupUi(this);
+    indexhtml = new IndexHTML();
     blockmode_localhost = true;
 }
 
 SettingsWindow::~SettingsWindow()
 {
+    delete indexhtml;
     delete ui;
 }
 
@@ -76,9 +78,29 @@ QString SettingsWindow::getRespondingIP()
     return ui->respondingIP->text();
 }
 
+QString SettingsWindow::getDNSServerPort()
+{
+    return ui->dnsServerPort->text();
+}
+
+QString SettingsWindow::getHTTPServerPort()
+{
+    return ui->httpServerPort->text();
+}
+
 void SettingsWindow::setCachedMinutesValid(quint32 minutesValid)
 {
      ui->cacheValidMinutes->setText(QString("%1").arg(minutesValid));
+}
+
+void SettingsWindow::setDNSServerPort(quint16 dnsServerPort)
+{
+    ui->dnsServerPort->setText(QString("%1").arg(dnsServerPort));
+}
+
+void SettingsWindow::setHTTPServerPort(quint16 httpServerPort)
+{
+    ui->httpServerPort->setText(QString("%1").arg(httpServerPort));
 }
 
 quint32 SettingsWindow::getCachedMinutesValid()
@@ -89,6 +111,11 @@ quint32 SettingsWindow::getCachedMinutesValid()
 void SettingsWindow::setBlockOptionNoResponse()
 {
     ui->option_noresponse->setChecked(true);
+}
+
+void SettingsWindow::setAutoInject(bool checked)
+{
+    ui->autoinjectBox->setChecked(checked);
 }
 
 void SettingsWindow::on_addButton_clicked()
@@ -137,4 +164,27 @@ void SettingsWindow::on_edit_dnsserver_returnPressed()
 void SettingsWindow::on_clearCacheButton_clicked()
 {
     emit clearDNSCache();
+}
+
+void SettingsWindow::on_editindexButton_clicked()
+{
+    indexhtml->show();
+}
+
+void SettingsWindow::on_ipinjectButton_clicked()
+{
+    emit setIPToFirstListening();
+}
+
+void SettingsWindow::on_autoinjectBox_stateChanged(int arg1)
+{
+    if(arg1)
+    {
+        emit setIPToFirstListening();
+        autoinject = true;
+    }
+    else
+        autoinject = false;
+
+    emit settingsUpdated();
 }

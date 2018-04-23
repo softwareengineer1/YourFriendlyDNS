@@ -33,7 +33,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include <QDir>
 #include <QStandardPaths>
 #include "settingswindow.h"
-#include "smalldnsserver.h"
+#include "messagesthread.h"
 
 namespace Ui {
 class DNSServerWindow;
@@ -47,25 +47,33 @@ public:
     explicit DNSServerWindow(QWidget *parent = 0);
     ~DNSServerWindow();
 
+public slots:
+    void serversInitialized();
+    void htmlChanged(QString &html);
+    void setIPToFirstListening();
+
 private slots:
     void settingsUpdated();
     void queryRespondedTo(ListEntry e);
     void on_firstAddButton_clicked();
     void on_whitelistButton_clicked();
     void on_blacklistButton_clicked();
-    void on_pushButton_clicked();
     void on_initialMode_stateChanged(int arg1);
-    void on_pushButton_2_clicked();
+    void on_saveButton_clicked();
     void on_removeButton_clicked();
     void on_hostnameEdit_returnPressed();
     void on_ipEdit_returnPressed();
     void on_secondAddButton_clicked();
+    void on_settingsButton_clicked();
 
 private:
     Ui::DNSServerWindow *ui;
+    MessagesThread *messagesThread;
     SettingsWindow *settings;
     SmallDNSServer *server;
-    QString settingspath;
+    SmallHTTPServer *httpServer;
+    QString settingspath, html;
+
     void refreshList();
     bool settingsSave();
     bool settingsLoad();

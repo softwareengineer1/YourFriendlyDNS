@@ -15,22 +15,25 @@
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout">
-    <item row="6" column="0">
-     <widget class="QLabel" name="label_2">
-      <property name="text">
-       <string>Real DNS servers to use:</string>
+    <item row="1" column="0">
+     <widget class="QLabel" name="label">
+      <property name="font">
+       <font>
+        <pointsize>8</pointsize>
+       </font>
       </property>
-     </widget>
-    </item>
-    <item row="4" column="0" colspan="4">
-     <widget class="QRadioButton" name="option_noresponse">
       <property name="text">
-       <string>Just don't even respond to the request</string>
+       <string>DNS Block Method:</string>
       </property>
      </widget>
     </item>
     <item row="2" column="0" colspan="2">
      <widget class="QRadioButton" name="option_localhost">
+      <property name="font">
+       <font>
+        <pointsize>8</pointsize>
+       </font>
+      </property>
       <property name="text">
        <string>Return localhost/127.0.0.1/custom:</string>
       </property>
@@ -39,8 +42,13 @@
       </property>
      </widget>
     </item>
-    <item row="7" column="0" colspan="4">
+    <item row="11" column="0" colspan="4">
      <widget class="QListWidget" name="realdnsservers">
+      <property name="font">
+       <font>
+        <pointsize>8</pointsize>
+       </font>
+      </property>
       <item>
        <property name="text">
         <string>208.67.222.222</string>
@@ -53,15 +61,49 @@
       </item>
      </widget>
     </item>
-    <item row="6" column="1">
+    <item row="10" column="1">
      <widget class="QPushButton" name="removeButton">
+      <property name="font">
+       <font>
+        <pointsize>8</pointsize>
+       </font>
+      </property>
       <property name="text">
        <string>Remove</string>
       </property>
      </widget>
     </item>
-    <item row="6" column="2">
+    <item row="10" column="0">
+     <widget class="QLabel" name="label_2">
+      <property name="font">
+       <font>
+        <pointsize>8</pointsize>
+       </font>
+      </property>
+      <property name="text">
+       <string>Real DNS servers:</string>
+      </property>
+     </widget>
+    </item>
+    <item row="7" column="0" colspan="4">
+     <widget class="QRadioButton" name="option_noresponse">
+      <property name="font">
+       <font>
+        <pointsize>8</pointsize>
+       </font>
+      </property>
+      <property name="text">
+       <string>Just don't even respond to the request</string>
+      </property>
+     </widget>
+    </item>
+    <item row="10" column="2">
      <widget class="QPushButton" name="addButton">
+      <property name="font">
+       <font>
+        <pointsize>8</pointsize>
+       </font>
+      </property>
       <property name="text">
        <string>Add</string>
       </property>
@@ -69,23 +111,32 @@
     </item>
     <item row="1" column="3">
      <widget class="QLabel" name="label_3">
+      <property name="font">
+       <font>
+        <pointsize>8</pointsize>
+       </font>
+      </property>
       <property name="text">
-       <string>&lt;- Cached DNS requests reused for # of minutes (0 == basically no cache)</string>
+       <string>&lt;- Cached DNS responses # of minutes valid (0 == basically no cache)</string>
       </property>
      </widget>
     </item>
-    <item row="1" column="0">
-     <widget class="QLabel" name="label">
-      <property name="text">
-       <string>DNS Block Method:</string>
+    <item row="10" column="3">
+     <widget class="QLineEdit" name="edit_dnsserver">
+      <property name="font">
+       <font>
+        <pointsize>8</pointsize>
+       </font>
       </property>
      </widget>
-    </item>
-    <item row="6" column="3">
-     <widget class="QLineEdit" name="edit_dnsserver"/>
     </item>
     <item row="2" column="2">
      <widget class="QLineEdit" name="respondingIP">
+      <property name="font">
+       <font>
+        <pointsize>8</pointsize>
+       </font>
+      </property>
       <property name="text">
        <string>127.0.0.1</string>
       </property>
@@ -93,13 +144,110 @@
     </item>
     <item row="1" column="2">
      <widget class="QLineEdit" name="cacheValidMinutes">
+      <property name="font">
+       <font>
+        <pointsize>8</pointsize>
+       </font>
+      </property>
       <property name="text">
        <string>5</string>
       </property>
      </widget>
     </item>
-    <item row="2" column="3">
+    <item row="8" column="0">
+     <widget class="QLabel" name="label_4">
+      <property name="font">
+       <font>
+        <pointsize>8</pointsize>
+       </font>
+      </property>
+      <property name="text">
+       <string>DNS Server Port:</string>
+      </property>
+     </widget>
+    </item>
+    <item row="8" column="1">
+     <widget class="QLineEdit" name="dnsServerPort">
+      <property name="font">
+       <font>
+        <pointsize>8</pointsize>
+       </font>
+      </property>
+      <property name="text">
+       <string>53</string>
+      </property>
+     </widget>
+    </item>
+    <item row="9" column="0">
+     <widget class="QLabel" name="label_5">
+      <property name="font">
+       <font>
+        <pointsize>8</pointsize>
+       </font>
+      </property>
+      <property name="text">
+       <string>HTTP Server Port:</string>
+      </property>
+     </widget>
+    </item>
+    <item row="9" column="1">
+     <widget class="QLineEdit" name="httpServerPort">
+      <property name="font">
+       <font>
+        <pointsize>8</pointsize>
+       </font>
+      </property>
+      <property name="text">
+       <string>80</string>
+      </property>
+     </widget>
+    </item>
+    <item row="9" column="2">
+     <widget class="QPushButton" name="editindexButton">
+      <property name="font">
+       <font>
+        <pointsize>8</pointsize>
+       </font>
+      </property>
+      <property name="text">
+       <string>Edit &quot;index.html&quot;</string>
+      </property>
+     </widget>
+    </item>
+    <item row="3" column="2">
+     <widget class="QPushButton" name="ipinjectButton">
+      <property name="font">
+       <font>
+        <pointsize>8</pointsize>
+       </font>
+      </property>
+      <property name="text">
+       <string>^ Inject IP ^</string>
+      </property>
+     </widget>
+    </item>
+    <item row="6" column="2">
+     <widget class="QCheckBox" name="autoinjectBox">
+      <property name="font">
+       <font>
+        <pointsize>8</pointsize>
+       </font>
+      </property>
+      <property name="text">
+       <string>Auto inject it</string>
+      </property>
+      <property name="checked">
+       <bool>true</bool>
+      </property>
+     </widget>
+    </item>
+    <item row="3" column="3">
      <widget class="QPushButton" name="clearCacheButton">
+      <property name="font">
+       <font>
+        <pointsize>8</pointsize>
+       </font>
+      </property>
       <property name="text">
        <string>Clear Cache Now</string>
       </property>

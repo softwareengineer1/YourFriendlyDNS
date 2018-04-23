@@ -26,72 +26,82 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 void morphRequestIntoARecordResponse(QByteArray &dnsrequest, quint32 responseIP, quint32 spliceOffset)
 {
-    char *ptr = dnsrequest.data();
+    if(dnsrequest.size() >= DNS_HEADER_SIZE) //Make sure there's at least a dns header here to write to
+    {
+        char *ptr = dnsrequest.data();
 
-    ptr[2] |= 0x80; //Make It An Answer Response
-    // DNS Answer
-    unsigned char QAnswer[] = {
-        0xc0,0x0c, // 1100 0000 0000 1100 -> offset = 12
-        0x00,0x01, // Type  : A
-        0x00,0x01, // Class : IN
-        0x00,0x01,0x51,0x80, // TTL = 86400 -> 24h
-        0x00,0x04, // RD Length
-        0x00,0x00,0x00,0x00 // RDATA
-    };
+        ptr[DNS_HEADER_FLAGS_OFFSET] |= AUTHORITATIVE_ANSWER_FLAG; //Make It An Answer Response
+        // DNS Answer
+        unsigned char QAnswer[] = {
+            0xc0,0x0c, // 1100 0000 0000 1100 -> offset = 12
+            0x00,0x01, // Type  : A
+            0x00,0x01, // Class : IN
+            0x00,0x01,0x51,0x80, // TTL = 86400 -> 24h
+            0x00,0x04, // RD Length
+            0x00,0x00,0x00,0x00 // RDATA
+        };
 
-    QAnswer[12] = (responseIP & 0xff000000) >> 24;
-    QAnswer[13] = (responseIP & 0x00ff0000) >> 16;
-    QAnswer[14] = (responseIP & 0x0000ff00) >>  8;
-    QAnswer[15] = (responseIP & 0x000000ff);
+        QAnswer[12] = (responseIP & 0xff000000) >> 24;
+        QAnswer[13] = (responseIP & 0x00ff0000) >> 16;
+        QAnswer[14] = (responseIP & 0x0000ff00) >>  8;
+        QAnswer[15] = (responseIP & 0x000000ff);
 
-    // We add our answer containing our ip of choice! (localhost/127.0.0.1 by default, change it in setings or adding a host with a custom ip to either list)
-    ptr[7]++;
-    dnsrequest.insert(spliceOffset, (char*)QAnswer, 16);
+        // We add our answer containing our ip of choice! (localhost/127.0.0.1 by default, change it in setings or adding a host with a custom ip to either list)
+        ptr[DNS_HEADER_ANSWER_COUNT_OFFSET]++;
+
+        if(spliceOffset <= (quint32)dnsrequest.size()) //Make sure the splice offset / where the answer(s) should go is in bounds or don't use it
+            dnsrequest.insert(spliceOffset, (char*)QAnswer, 16);
+        else
+            dnsrequest.append((char*)QAnswer, 16);
+    }
 }
 
 void morphRequestIntoARecordResponse(QByteArray &dnsrequest, std::vector<quint32> &responseIPs, quint32 spliceOffset)
 {
-    char *ptr = dnsrequest.data();
-
-    //qDebug() << "request before morph:\n" << dnsrequest.toHex();
-
-    ptr[2] |= 0x80; //Make It An Answer Response
-    // DNS Answer
-    unsigned char QAnswer[] = {
-        0xc0,0x0c, // 1100 0000 0000 1100 -> offset = 12
-        0x00,0x01, // Type  : A
-        0x00,0x01, // Class : IN
-        0x00,0x01,0x51,0x80, // TTL = 86400 -> 24h
-        0x00,0x04, // RD Length
-        0x00,0x00,0x00,0x00 // RDATA
-    };
-
-    if(!responseIPs.empty())
+    if(dnsrequest.size() >= DNS_HEADER_SIZE) //Make sure there's at least a dns header here to write to
     {
-        QByteArray answers;
-        for(quint32 ip : responseIPs)
+        char *ptr = dnsrequest.data();
+
+        //qDebug() << "request before morph:\n" << dnsrequest.toHex();
+
+        ptr[DNS_HEADER_FLAGS_OFFSET] |= AUTHORITATIVE_ANSWER_FLAG; //Make It An Answer Response
+        // DNS Answer
+        unsigned char QAnswer[] = {
+            0xc0,0x0c, // 1100 0000 0000 1100 -> offset = 12
+            0x00,0x01, // Type  : A
+            0x00,0x01, // Class : IN
+            0x00,0x01,0x51,0x80, // TTL = 86400 -> 24h
+            0x00,0x04, // RD Length
+            0x00,0x00,0x00,0x00 // RDATA
+        };
+
+        if(!responseIPs.empty())
         {
-            QAnswer[12] = (ip & 0xff000000) >> 24;
-            QAnswer[13] = (ip & 0x00ff0000) >> 16;
-            QAnswer[14] = (ip & 0x0000ff00) >>  8;
-            QAnswer[15] = (ip & 0x000000ff);
+            QByteArray answers;
+            for(quint32 ip : responseIPs)
+            {
+                QAnswer[12] = (ip & 0xff000000) >> 24;
+                QAnswer[13] = (ip & 0x00ff0000) >> 16;
+                QAnswer[14] = (ip & 0x0000ff00) >>  8;
+                QAnswer[15] = (ip & 0x000000ff);
 
-            // We add as many answers as ips we have to return to the requester
-            ptr[7]++;
-            answers.append((char*)QAnswer, 16);
+                // We add as many answers as ips we have to return to the requester
+                ptr[DNS_HEADER_ANSWER_COUNT_OFFSET]++;
+                answers.append((char*)QAnswer, 16);
+            }
 
-            //int i = ptr[7];
-            //qDebug() << "appended answer containing ip:" << QHostAddress(ip).toString() << "new answer count:" << i;
+            if(spliceOffset <= (quint32)dnsrequest.size()) //Make sure the splice offset / where the answer(s) should go is in bounds or don't use it
+                dnsrequest.insert(spliceOffset, answers);
+            else
+                dnsrequest.append(answers);
+            //qDebug() << "Morphed into response:\n" << dnsrequest.toHex();
         }
-
-        dnsrequest.insert(spliceOffset, answers);
-        //qDebug() << "Morphed into response:\n" << dnsrequest.toHex();
-    }
-    else
-    {
-        // EDNS not supported
-        ptr[3] &= 0xf0;
-        ptr[3] |= 4; // NOTIMPL
+        else
+        {
+            // EDNS not supported
+            ptr[DNS_HEADER_FLAGS_OFFSET+1] &= 0xf0;
+            ptr[DNS_HEADER_FLAGS_OFFSET+1] |= 4; // NOTIMPL
+        }
     }
 }
 
@@ -110,7 +120,7 @@ void InitialResponse::lookupDoneSendResponseNow(DNSInfo &dns, QUdpSocket *server
     if(whoWeNeedToRespondImmediatelyTo.domainString == dns.domainString && !responseHandled)
     {
         qDebug() << "For initial response, matched:" << whoWeNeedToRespondImmediatelyTo.domainString << "with:" << dns.domainString;
-        if(dns.question.qtype == 1)
+        if(dns.question.qtype == DNS_TYPE_A)
         {
             if(!dns.ipaddresses.empty())
             {

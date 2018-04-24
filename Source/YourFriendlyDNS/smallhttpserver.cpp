@@ -39,11 +39,10 @@ void SmallHTTPServer::returnIndexPage()
 
     QString contentLength = QString("%1").arg(html.size());
     QString currentDateTime = QDateTime::currentDateTime().toString();
-
     QString response = response_header.arg(contentType).arg(encodingType).arg(contentLength).arg(acceptRanges).arg(currentDateTime).arg(connection);
     response += html;
 
     socket->write(response.toUtf8());
-    qDebug() << "[" << socket->socketDescriptor() << "] Wrote index page:" << response;
     socket->disconnectFromHost();
+    //qDebug() << "[" << socket->socketDescriptor() << "] Wrote index page:" << response;
 }

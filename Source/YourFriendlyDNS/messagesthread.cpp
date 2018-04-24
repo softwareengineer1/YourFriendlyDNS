@@ -32,6 +32,7 @@ void MessagesThread::run()
     AndroidSU_ServerOP *suOP = new AndroidSU_ServerOP(AndroidSU_ServerOP::opcode::iptablesSet, data->dnsServer->dnsServerPort, data->dnsServer->httpServerPort);
     connect(suOP, SIGNAL(finished()), suOP, SLOT(deleteLater()));
     suOP->start();
+    emit androidInit();
     #endif
 
     if(data->dnsServer->startServer(QHostAddress::AnyIPv4, data->dnsServer->dnsServerPort))
@@ -40,16 +41,6 @@ void MessagesThread::run()
         qDebug() << "HTTP server started on address:" << data->httpServer->serverAddress() << "and port:" << data->httpServer->serverPort();
 
     qDebug() << "MessagesThread started, for handling server duties!";
-
-    for(;;)
-    {
-        try //It shouldn't need this, I think it's okay now, but just in case.
-        {
-            exec(); //handles the signals and slots for objects owned by this thread
-        }
-        catch(...)
-        {
-            qDebug() << "Exception while handling signals and slots from dns and http servers, something needs fixing...";
-        }
-    }
+    exec(); //handles the signals and slots for objects owned by this thread
+    //(eh, that wasn't doing anything that was here anyway, better without it and I think solid now for real!
 }

@@ -26,6 +26,7 @@ public:
 
 signals:
     void serversInitialized();
+    void androidInit();
 };
 
 #endif // MESSAGESTHREAD_H

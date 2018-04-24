@@ -117,19 +117,17 @@ InitialResponse::InitialResponse(DNSInfo &dns, QObject *parent)
 
 void InitialResponse::lookupDoneSendResponseNow(DNSInfo &dns, QUdpSocket *serversocket)
 {
-    if(respondTo.domainString == dns.domainString && !responseHandled)
+    if(respondTo.domainString == dns.domainString && respondTo.question.qtype == dns.question.qtype && !responseHandled)
     {
         qDebug() << "For initial response, matched:" << respondTo.domainString << "with:" << dns.domainString;
-        if(respondTo.req.size() > 1)
+        if(respondTo.req.size() > DNS_HEADER_SIZE)
         {
             if(dns.question.qtype == DNS_TYPE_A)
             {
-                if(!dns.ipaddresses.empty())
+                if(dns.hasIPs)
                 {
-                    qDebug() << "Morphing and responding with an A record! to:" << respondTo.sender << respondTo.senderPort
-                             << "with ips (first one):" << QHostAddress(dns.ipaddresses[0]).toString()
-                            << "request:" << respondTo.req;
-
+                    qDebug() << "[A RECORD] to:" << respondTo.sender << respondTo.senderPort;
+                    qDebug() << "request:" << respondTo.req << "answer offset:" << dns.answeroffset;
                     morphRequestIntoARecordResponse(respondTo.req, dns.ipaddresses, dns.answeroffset);
                     qDebug() << "response:" << respondTo.req;
                     serversocket->writeDatagram(respondTo.req, respondTo.sender, respondTo.senderPort);
@@ -137,10 +135,10 @@ void InitialResponse::lookupDoneSendResponseNow(DNSInfo &dns, QUdpSocket *server
             }
             else
             {
-                if(dns.res.size() > 1)
+                if(dns.res.size() > DNS_HEADER_SIZE)
                 {
                     *(quint16*)dns.res.data() = *(quint16*)respondTo.req.data(); //match the request/response ids in case they aren't matching
-                    qDebug() << "Responding to non A record! response:\n" << dns.res;
+                    qDebug() << "Responding to a type:" << dns.question.qtype << "response:\n" << dns.res;
                     serversocket->writeDatagram(dns.res, respondTo.sender, respondTo.senderPort);
                 }
             }

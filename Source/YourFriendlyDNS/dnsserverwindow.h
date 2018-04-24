@@ -49,6 +49,7 @@ public:
 
 public slots:
     void serversInitialized();
+    void androidInit();
     void htmlChanged(QString &html);
     void setIPToFirstListening();
 
@@ -74,7 +75,7 @@ private:
     SettingsWindow *settings;
     SmallDNSServer *server;
     SmallHTTPServer *httpServer;
-    QString settingspath, html;
+    QString settingspath, html, version;
 
     void appendToBlacklist(ListEntry e);
     void refreshList();

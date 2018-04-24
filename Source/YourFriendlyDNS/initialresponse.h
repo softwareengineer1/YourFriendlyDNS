@@ -82,18 +82,20 @@ public:
         memset(&header, 0, sizeof(header));
         memset(&question, 0, sizeof(question));
         answeroffset = 0;
-        isValid = isResponse = false;
+        isValid = isResponse = hasIPs = false;
     }
     DNSInfo(const DNSInfo &info)
     {
         memcpy(&header, &info.header, sizeof(header));
-        //memcpy(&question, &info.question, sizeof(question));
+        memcpy(&question, &info.question, sizeof(question));
         domainString = info.domainString;
-
         answeroffset = info.answeroffset;
         isValid = info.isValid;
         isResponse = info.isResponse;
-        ipaddresses = info.ipaddresses;
+        hasIPs = info.hasIPs;
+        //ipaddresses = info.ipaddresses;
+        for(auto i : info.ipaddresses)
+            ipaddresses.push_back(i);
         expiry = info.expiry;
         req = info.req;
         res = info.res;
@@ -107,7 +109,7 @@ public:
     QString domainString;
     quint16 senderPort;
     quint32 answeroffset;
-    bool isValid, isResponse;
+    bool isValid, isResponse, hasIPs;
     std::vector<quint32> ipaddresses;
     QDateTime expiry;
     QByteArray req, res;

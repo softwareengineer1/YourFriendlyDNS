@@ -25,4 +25,5 @@ void IndexHTML::on_okButton_clicked()
 {
     QString html = ui->html->toPlainText();
     emit htmlChanged(html);
+    hide();
 }

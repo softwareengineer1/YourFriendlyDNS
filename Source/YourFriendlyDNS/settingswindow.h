@@ -90,6 +90,7 @@ public:
     void setCachedMinutesValid(quint32 minutesValid);
     void setDNSServerPort(quint16 dnsServerPort);
     void setHTTPServerPort(quint16 httpServerPort);
+    void setiptablesButtonEnabled(bool enabled = true);
     quint32 getCachedMinutesValid();
     void setBlockOptionNoResponse();
     void setAutoInject(bool checked);
@@ -101,8 +102,10 @@ signals:
     void setIPToFirstListening();
     void autoCaptureCaptivePortals();
     void iptablesUndoAndroid();
+    void autoInjectIfEnabled();
 
 private slots:
+    void onShow();
     void on_addButton_clicked();
     void on_removeButton_clicked();
     void on_option_localhost_clicked();

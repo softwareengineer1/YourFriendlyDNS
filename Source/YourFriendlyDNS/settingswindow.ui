@@ -267,6 +267,9 @@
     </item>
     <item row="9" column="0" colspan="2">
      <widget class="QPushButton" name="iptablesUndo">
+      <property name="enabled">
+       <bool>false</bool>
+      </property>
       <property name="font">
        <font>
         <pointsize>8</pointsize>
@@ -274,6 +277,15 @@
       </property>
       <property name="text">
        <string>Delete iptables entries (android)</string>
+      </property>
+      <property name="autoDefault">
+       <bool>false</bool>
+      </property>
+      <property name="default">
+       <bool>false</bool>
+      </property>
+      <property name="flat">
+       <bool>false</bool>
       </property>
      </widget>
     </item>

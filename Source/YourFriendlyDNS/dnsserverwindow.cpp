@@ -34,6 +34,7 @@ DNSServerWindow::DNSServerWindow(QWidget *parent) : QMainWindow(parent), ui(new 
     messagesThread = new MessagesThread();
     connect(messagesThread, SIGNAL(finished()), this, SLOT(deleteLater()));
     connect(messagesThread, SIGNAL(serversInitialized()), this, SLOT(serversInitialized()));
+    connect(messagesThread, SIGNAL(androidInit()), this, SLOT(androidInit()));
     messagesThread->start();
 
     settings = new SettingsWindow();
@@ -79,8 +80,6 @@ void DNSServerWindow::serversInitialized()
     httpServer = AppData::get()->httpServer;
     connect(server, SIGNAL(queryRespondedTo(ListEntry)), this, SLOT(queryRespondedTo(ListEntry)));
     connect(settings, SIGNAL(clearDNSCache()), server, SLOT(clearDNSCache()));
-    settingsLoad();
-    settingsUpdated();
 
     QString listeningips = "Listening IPs: ";
     QList<QHostAddress> list = QNetworkInterface::allAddresses();
@@ -97,6 +96,14 @@ void DNSServerWindow::serversInitialized()
     }
     listeningips.truncate(listeningips.size()-2);
     ui->listeningIPs->setText(listeningips);
+    settingsLoad();
+    settingsUpdated();
+    settings->setiptablesButtonEnabled(false);
+}
+
+void DNSServerWindow::androidInit()
+{
+    settings->setiptablesButtonEnabled();
 }
 
 void DNSServerWindow::htmlChanged(QString &html)
@@ -178,6 +185,7 @@ void DNSServerWindow::on_firstAddButton_clicked()
 {
     bool append = true;
     ListEntry e(ui->hostnameEdit->text());
+    if(e.hostname.isEmpty()) return;
     if(!ui->ipEdit->text().isEmpty())
         e.ip = QHostAddress(ui->ipEdit->text()).toIPv4Address();
 
@@ -262,7 +270,7 @@ bool DNSServerWindow::settingsSave()
     if(file.open(QFile::WriteOnly))
     {
         QJsonObject json;
-        json["version"] = "1.1";
+        json["version"] = "1.1.2";
         json["initialMode"] = server->initialMode;
         json["whitelistmode"] = server->whitelistmode;
         json["blockmode_returnlocalhost"] = server->blockmode_returnlocalhost;
@@ -337,13 +345,6 @@ bool DNSServerWindow::settingsLoad()
         if(!settings->blockmode_localhost)
             settings->setBlockOptionNoResponse();
     }
-    if(json.contains("autoinjectip") && json["autoinjectip"].isBool())
-    {
-        settings->autoinject = json["autoinjectip"].toBool();
-        if(settings->autoinject)
-            setIPToFirstListening();
-        settings->setAutoInject(settings->autoinject);
-    }
 
     if(json.contains("ipToRespondWith") && json["ipToRespondWith"].isDouble())
     {
@@ -351,6 +352,24 @@ bool DNSServerWindow::settingsLoad()
         qDebug() << "Loading respondingIP:" << QHostAddress(server->ipToRespondWith).toString();
         settings->setRespondingIP(QHostAddress(server->ipToRespondWith).toString());
     }
+    if(json.contains("autoinjectip") && json["autoinjectip"].isBool())
+    {
+        settings->autoinject = json["autoinjectip"].toBool();
+        if(settings->autoinject)
+        {
+            server->ipToRespondWith = server->listeningIPs[0];
+            settings->setAutoInject(settings->autoinject);
+        }
+
+        qDebug() << "autoinject:" << settings->autoinject << "ip:" << QHostAddress(server->listeningIPs[0]);
+    }
+    else
+    {
+        settings->autoinject = true;
+        settings->setAutoInject(true);
+        qDebug() << "autoinjected!";
+    }
+
     if(json.contains("cachedMinutesValid") && json["cachedMinutesValid"].isDouble())
     {
         server->cachedMinutesValid = json["cachedMinutesValid"].toInt();
@@ -443,6 +462,15 @@ bool DNSServerWindow::settingsLoad()
         server->whitelistmode = json["whitelistmode"].toBool();
         if(!server->whitelistmode)
             on_blacklistButton_clicked();
+    }
+
+    if(json.contains("version") && json["version"].isString())
+    {
+        version = json["version"].toString();
+    }
+    else
+    {
+        autoCaptureCaptivePortals();
     }
 
     refreshList();

@@ -38,6 +38,11 @@ SettingsWindow::~SettingsWindow()
     delete ui;
 }
 
+void SettingsWindow::onShow()
+{
+
+}
+
 QVector<QString> SettingsWindow::returnRealDNSServers()
 {
      QVector<QString> dnsservers;
@@ -64,7 +69,7 @@ bool SettingsWindow::isExisting(const QString &dns)
 
 void SettingsWindow::appendDNSServer(const QString &dns)
 {
-    if(!isExisting(dns))
+    if(!dns.isEmpty() && !isExisting(dns))
         ui->realdnsservers->addItem(dns);
 }
 
@@ -103,6 +108,12 @@ void SettingsWindow::setHTTPServerPort(quint16 httpServerPort)
     ui->httpServerPort->setText(QString("%1").arg(httpServerPort));
 }
 
+void SettingsWindow::setiptablesButtonEnabled(bool enabled)
+{
+    ui->iptablesUndo->setVisible(enabled);
+    ui->iptablesUndo->setEnabled(enabled);
+}
+
 quint32 SettingsWindow::getCachedMinutesValid()
 {
      return ui->cacheValidMinutes->text().toInt();
@@ -116,6 +127,8 @@ void SettingsWindow::setBlockOptionNoResponse()
 void SettingsWindow::setAutoInject(bool checked)
 {
     ui->autoinjectBox->setChecked(checked);
+    if(checked)
+        emit setIPToFirstListening();
 }
 
 void SettingsWindow::on_addButton_clicked()

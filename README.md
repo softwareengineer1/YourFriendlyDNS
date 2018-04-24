@@ -1,6 +1,29 @@
 # YourFriendlyDNS
 A really awesome multi-platform (lin,win,mac,android) local caching and proxying dns server!
 
+{Version 1.1.2}
+[Features since 1.0]
+ a. Inbuilt single file replayer http server (it just replays the same html you specify for any request)
+   ->"index.html" file can be edited from the settings
+   ->port of the http server can be customized, 0 is off, by default it's 80, which goes to port 8080 on android (and iptables 80 -> 8080)
+   ->(port of the dns server can now be customized also, unlike it however, 0 is port 53 still :))
+ b. Auto injects the servers first found listening ip by default (ip of dns and now http server) (OOB captive portal capturing)
+ c. Upon loading of new version, auto blacklisting of known captive portal urls happens and it's an option in the settings
+ d. Improved caching! Now caches and returns for all dns query types instead of just A records.
+ [Android Specific]
+ e. Event processing now moved to a background thread, allowing it to now entirely run both the dns and http server in the background on android!
+   ->You can now minimize it, and it will stay working in the background (no longer depending on gui being visible). As long as the app stays running it'll stay working!
+   ->Even though I'm creating some threads it's still ansynchronous. Those threads are to process the ansynchronous events, seperate from the main thread.
+ f. Gui looks better on android and is more readable
+ g. Now only inserts the iptables forwarding once, so it doesn't just keep inserting the same thing every new running instance into iptables
+ h. Runs those iptables inserting with su privileges in it's own thread as well so it also doesn't block the main thread either.
+[Bugfixes since 1.0]
+ i. Crash on no ip addresses at all received from real dns server for A record
+   (What it does now instead of crashing is a delayed not able to load, and then it redirects to the injected ip / server ip / custom ip)
+ j. Don't allow blank entries in either lists or dns server box
+ k. Improved handling of other dns types and of A records themselves too 
+
+
 Okay the directions for using with the switch or other use:
 
 Two options:

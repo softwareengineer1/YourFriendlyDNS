@@ -268,7 +268,7 @@ void SmallDNSServer::processLookups()
                     //qDebug() << "Looking in cache for:" << dns.domainString << cachedDNSResponses[i].domainString << dns.question.qtype;
                     if(cachedDNSResponses[i].domainString == dns.domainString && cachedDNSResponses[i].question.qtype == DNS_TYPE_A)
                     {
-                        qDebug() << "Updating cache of record type: A for domain:" << dns.domainString << "with new expiry:" << dns.expiry;
+                        //qDebug() << "Updating cache of record type: A for domain:" << dns.domainString << "with new expiry:" << dns.expiry;
                         cachedDNSResponses[i] = dns;
                         emit queryRespondedTo(ListEntry(dns.domainString,dns.ipaddresses[0]));
                         continue;
@@ -287,7 +287,7 @@ void SmallDNSServer::processLookups()
                     //qDebug() << "Looking in cache for:" << dns.domainString << cachedDNSResponses[i].domainString << dns.question.qtype;
                     if(cachedDNSResponses[i].domainString == dns.domainString && cachedDNSResponses[i].question.qtype == dns.question.qtype)
                     {
-                        qDebug() << "Updating cache of record type:" << dns.question.qtype << "for domain:" << dns.domainString << "with new expiry:" << dns.expiry;
+                        //qDebug() << "Updating cache of record type:" << dns.question.qtype << "for domain:" << dns.domainString << "with new expiry:" << dns.expiry;
                         cachedDNSResponses[i] = dns;
                         continue;
                     }

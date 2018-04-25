@@ -108,6 +108,7 @@ void morphRequestIntoARecordResponse(QByteArray &dnsrequest, std::vector<quint32
 InitialResponse::InitialResponse(DNSInfo &dns, QObject *parent)
 {
     Q_UNUSED(parent);
+    respondTo.question.qtype = dns.question.qtype;
     respondTo.domainString = dns.domainString;
     respondTo.sender = dns.sender;
     respondTo.senderPort = dns.senderPort;
@@ -119,7 +120,6 @@ void InitialResponse::lookupDoneSendResponseNow(DNSInfo &dns, QUdpSocket *server
 {
     if(respondTo.domainString == dns.domainString && respondTo.question.qtype == dns.question.qtype && !responseHandled)
     {
-        qDebug() << "For initial response, matched:" << respondTo.domainString << "with:" << dns.domainString;
         if(respondTo.req.size() > DNS_HEADER_SIZE)
         {
             if(dns.question.qtype == DNS_TYPE_A)

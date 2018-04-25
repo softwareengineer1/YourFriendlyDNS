@@ -1,6 +1,13 @@
 # YourFriendlyDNS
 A really awesome multi-platform (lin,win,mac,android) local caching and proxying dns server!
 
+{Version 1.1.3}
+[Bugfix release]
+1. Whitelist mode was broken in 1.1.2, it is now fixed and working again.
+2. Instantly responding to requests was broken in 1.1.2, now it's working again too.
+ ->That should be the last time anything major is broken at least until 1.2+ hopefully! :)
+  ->1.1.3 is a needed update if you have 1.1.2, so make sure to upgrade to it for improved experience.
+
 {Version 1.1.2}
 [Features since 1.0]
  1. Inbuilt single file replayer http server (it just replays the same html you specify for any request)
@@ -93,17 +100,4 @@ https://github.com/softwareengineer1/YourFriendlyDNS/tree/master/Android-armeabi
 
 Android x86:
 https://github.com/softwareengineer1/YourFriendlyDNS/tree/master/Android-x86
-
-Demo:
-http://webm.land/media/tmp/a95492cd-6f56-4f97-9449-514ee5bd513c.webm
-
-Android version works!: (Gui little smushed though, will fix that)
-https://i.imgur.com/xG48RwE.mp4
-
-Linux:
-https://i.imgur.com/Jpuw4p7.png
-Mac:
-https://i.imgur.com/WVFbGov.png
-Windows:
-https://i.imgur.com/6E1MOkq.png
 

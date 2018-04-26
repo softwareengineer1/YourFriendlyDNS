@@ -4,6 +4,7 @@
 #include <QUdpSocket>
 #include <QDateTime>
 #include <QThread>
+#include <QtEndian>
 
 /* YourFriendlyDNS - A really awesome multi-platform (lin,win,mac,android) local caching and proxying dns server!
 Copyright (C) 2018  softwareengineer1 @ github.com/softwareengineer1
@@ -29,6 +30,19 @@ You should have received a copy of the GNU General Public License along
 with this program; if not, write to the Free Software Foundation, Inc.,
 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA. */
 
+#define DNS_HEADER_SIZE 12
+#define DNS_TYPE_A 1
+#define RCODE_NOERROR 0
+#define RCODE_FMTERROR 1
+#define RCODE_SERVFAIL 2
+#define RCODE_NXDOMAIN 3
+#define RCODE_NOTIMPL 4
+#define RCODE_REFUSED 5
+#define RCODE_YXDOMAIN 6
+#define RCODE_XRRSET 7
+#define RCODE_NOTAUTH 8
+#define RCODE_NOTZONE 9
+
 // DNS header structure : 12 bytes
 struct DNS_HEADER
 {
@@ -36,15 +50,15 @@ struct DNS_HEADER
 
     unsigned char rd :1; // recursion desired
     unsigned char tc :1; // truncated message
-    unsigned char aa :1; // authoritive answer
+    unsigned char AUTHORITATIVE_ANSWER_FLAG :1; // authoritive answer
     unsigned char opcode :4; // purpose of message
-    unsigned char qr :1; // query/response flag
+    unsigned char QUERY_RESPONSE_FLAG :1; // query/response flag
 
     unsigned char rcode :4; // response code
     unsigned char cd :1; // checking disabled
     unsigned char ad :1; // authenticated data
     unsigned char z :1; // its z! reserved
-    unsigned char ra :1; // recursion available
+    unsigned char RECURSION_AVAILABLE_FLAG :1; // recursion available
 
     unsigned short q_count; // number of question entries
     unsigned short ans_count; // number of answer entries
@@ -52,11 +66,11 @@ struct DNS_HEADER
     unsigned short add_count; // number of resource entries
 };
 
-#define DNS_HEADER_SIZE 12
-#define DNS_HEADER_FLAGS_OFFSET 2
+/*#define DNS_HEADER_FLAGS_OFFSET 2
+#define DNS_HEADER_RESPONSE_FLAGS_OFFSET 4
 #define DNS_HEADER_ANSWER_COUNT_OFFSET 7
-#define AUTHORITATIVE_ANSWER_FLAG (1 << 7)
-#define DNS_TYPE_A 1
+#define AUTHORITATIVE_ANSWER_FLAG (1 << 7)*/
+
 
 struct QUESTION
 {
@@ -94,7 +108,7 @@ public:
         isValid = info.isValid;
         isResponse = info.isResponse;
         hasIPs = info.hasIPs;
-        //ipaddresses = info.ipaddresses;
+        ipaddresses.clear();
         for(auto i : info.ipaddresses)
             ipaddresses.push_back(i);
         expiry = info.expiry;

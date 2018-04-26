@@ -174,7 +174,11 @@ void SmallDNSServer::processDNSRequests()
                 {
                     cacheNewIPsForDomain = (QDateTime::currentDateTime() > d.expiry);
                     if(cacheNewIPsForDomain)
+                    {
+                        d.expiry = QDateTime::currentDateTime().addSecs(cachedMinutesValid * 60);
+                        qDebug() << "Need to update the cache for this domain:" << d.domainString << "currentTime:" << QDateTime::currentDateTime() << "d.expiry:" << d.expiry;
                         break;
+                    }
 
                     if(d.ipaddresses.size() == 0) d.ipaddresses.push_back(ipToRespondWith);
                     if(d.ipaddresses.size() > 0)
@@ -215,7 +219,11 @@ void SmallDNSServer::processDNSRequests()
                 {
                     cacheNewIPsForDomain = (QDateTime::currentDateTime() > d.expiry);
                     if(cacheNewIPsForDomain)
+                    {
+                        d.expiry = QDateTime::currentDateTime().addSecs(cachedMinutesValid * 60);
+                        qDebug() << "Need to update the cache for this domain:" << d.domainString << "currentTime:" << QDateTime::currentDateTime() << "d.expiry:" << d.expiry;
                         break;
+                    }
 
                     //Just write the cached response for this other type
                     if(d.res.size() > DNS_HEADER_SIZE && dns.req.size() > DNS_HEADER_SIZE)
@@ -265,7 +273,13 @@ void SmallDNSServer::processLookups()
         {
             if(!dns.hasIPs && dns.question.qtype == DNS_TYPE_A)
             {
-                qDebug() << "Is type A, but has no IPs, will be directed to your custom ip in a moment...";
+                if(dns.header.rcode == RCODE_NXDOMAIN || dns.header.rcode == RCODE_YXDOMAIN || dns.header.rcode == RCODE_XRRSET)
+                {
+                    qDebug() << "For:" << dns.domainString << "NXDOMAIN or similar response code, redirecting immediately to custom ip!";
+                    dns.ipaddresses.push_back(ipToRespondWith);
+                    dns.hasIPs = true;
+                    emit lookupDoneSendResponseNow(dns, &serversock);
+                }
             }
             else
             {
@@ -275,45 +289,48 @@ void SmallDNSServer::processLookups()
 
             if(dns.question.qtype == DNS_TYPE_A) //Cache A record containing ip addresses and cache other types of records now too
             {
-                if(dns.hasIPs)
-                {
-                    dns.expiry = QDateTime::currentDateTime().addSecs(cachedMinutesValid * 60);
-                    //Update cache if already exists
-                    for(size_t i = 0; i < cachedDNSResponses.size(); i++)
-                    {
-                        //qDebug() << "Looking in cache for:" << dns.domainString << cachedDNSResponses[i].domainString << dns.question.qtype;
-                        if(cachedDNSResponses[i].domainString == dns.domainString && cachedDNSResponses[i].question.qtype == DNS_TYPE_A)
-                        {
-                            qDebug() << "Updating cache of record type: A for domain:" << dns.domainString << "with new expiry:" << dns.expiry;
-                            cachedDNSResponses[i] = dns;
-                            emit queryRespondedTo(ListEntry(dns.domainString,dns.ipaddresses[0]));
-                            breakAndContinue = true;
-                            break;
-                        }
-                    }
-                    if(breakAndContinue) continue;
-                    //Or just add it initially
-                    cachedDNSResponses.push_back(dns);
-                    emit queryRespondedTo(ListEntry(dns.domainString,dns.ipaddresses[0]));
-                }
-            }
-            else
-            {
-                dns.expiry = QDateTime::currentDateTime().addSecs(cachedMinutesValid * 60);
-                //Updating other record type cache if already exists
+                //Update cache if already exists
                 for(size_t i = 0; i < cachedDNSResponses.size(); i++)
                 {
                     //qDebug() << "Looking in cache for:" << dns.domainString << cachedDNSResponses[i].domainString << dns.question.qtype;
-                    if(cachedDNSResponses[i].domainString == dns.domainString && cachedDNSResponses[i].question.qtype == dns.question.qtype)
+                    if(cachedDNSResponses[i].domainString == dns.domainString && cachedDNSResponses[i].question.qtype == DNS_TYPE_A)
                     {
-                        qDebug() << "Updating cache of record type:" << dns.question.qtype << "for domain:" << dns.domainString << "with new expiry:" << dns.expiry;
+                        dns.expiry = QDateTime::currentDateTime().addSecs(cachedMinutesValid * 60);
                         cachedDNSResponses[i] = dns;
+                        if(dns.hasIPs)
+                            emit queryRespondedTo(ListEntry(dns.domainString,dns.ipaddresses[0]));
+                        qDebug() << "Updated cache of record type: A for domain:" << dns.domainString << "with new expiry:" << dns.expiry;
+
                         breakAndContinue = true;
                         break;
                     }
                 }
                 if(breakAndContinue) continue;
                 //Or just add it initially
+                dns.expiry = QDateTime::currentDateTime().addSecs(cachedMinutesValid * 60);
+                cachedDNSResponses.push_back(dns);
+                if(dns.hasIPs)
+                    emit queryRespondedTo(ListEntry(dns.domainString,dns.ipaddresses[0]));
+            }
+            else
+            {
+
+                //Updating other record type cache if already exists
+                for(size_t i = 0; i < cachedDNSResponses.size(); i++)
+                {
+                    //qDebug() << "Looking in cache for:" << dns.domainString << cachedDNSResponses[i].domainString << dns.question.qtype;
+                    if(cachedDNSResponses[i].domainString == dns.domainString && cachedDNSResponses[i].question.qtype == dns.question.qtype)
+                    {
+                        dns.expiry = QDateTime::currentDateTime().addSecs(cachedMinutesValid * 60);
+                        cachedDNSResponses[i] = dns;
+                        qDebug() << "Updated cache of record type:" << dns.question.qtype << "for domain:" << dns.domainString << "with new expiry:" << dns.expiry;
+                        breakAndContinue = true;
+                        break;
+                    }
+                }
+                if(breakAndContinue) continue;
+                //Or just add it initially
+                dns.expiry = QDateTime::currentDateTime().addSecs(cachedMinutesValid * 60);
                 cachedDNSResponses.push_back(dns);
             }
         }

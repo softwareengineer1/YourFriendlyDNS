@@ -28,9 +28,12 @@ void morphRequestIntoARecordResponse(QByteArray &dnsrequest, quint32 responseIP,
 {
     if(dnsrequest.size() >= DNS_HEADER_SIZE) //Make sure there's at least a dns header here to write to
     {
-        char *ptr = dnsrequest.data();
+        DNS_HEADER *header = (DNS_HEADER*)dnsrequest.data();
 
-        ptr[DNS_HEADER_FLAGS_OFFSET] |= AUTHORITATIVE_ANSWER_FLAG; //Make It An Answer Response
+        header->QUERY_RESPONSE_FLAG = 1; //Change from query to response
+        header->RECURSION_AVAILABLE_FLAG = 1; //Do this to suppress the warning message from dig about recursion being supported, let's say yes.
+        header->ans_count = qToBigEndian((quint16)1);
+        header->rcode = RCODE_NOERROR;
         // DNS Answer
         unsigned char QAnswer[] = {
             0xc0,0x0c, // 1100 0000 0000 1100 -> offset = 12
@@ -40,15 +43,12 @@ void morphRequestIntoARecordResponse(QByteArray &dnsrequest, quint32 responseIP,
             0x00,0x04, // RD Length
             0x00,0x00,0x00,0x00 // RDATA
         };
-
         QAnswer[12] = (responseIP & 0xff000000) >> 24;
         QAnswer[13] = (responseIP & 0x00ff0000) >> 16;
         QAnswer[14] = (responseIP & 0x0000ff00) >>  8;
         QAnswer[15] = (responseIP & 0x000000ff);
 
         // We add our answer containing our ip of choice! (localhost/127.0.0.1 by default, change it in setings or adding a host with a custom ip to either list)
-        ptr[DNS_HEADER_ANSWER_COUNT_OFFSET]++;
-
         if(spliceOffset < (quint32)dnsrequest.size()) //Make sure the splice offset / where the answer(s) should go is in bounds or don't use it
             dnsrequest.insert(spliceOffset, (char*)QAnswer, 16);
         else
@@ -60,11 +60,11 @@ void morphRequestIntoARecordResponse(QByteArray &dnsrequest, std::vector<quint32
 {
     if(dnsrequest.size() >= DNS_HEADER_SIZE) //Make sure there's at least a dns header here to write to
     {
-        char *ptr = dnsrequest.data();
+        DNS_HEADER *header = (DNS_HEADER*)dnsrequest.data();
 
-        //qDebug() << "request before morph:\n" << dnsrequest.toHex();
-
-        ptr[DNS_HEADER_FLAGS_OFFSET] |= AUTHORITATIVE_ANSWER_FLAG; //Make It An Answer Response
+        header->QUERY_RESPONSE_FLAG = 1; //Change from query to response
+        header->RECURSION_AVAILABLE_FLAG = 1; //Do this to suppress the warning message from dig about recursion being supported, let's say yes.
+        header->rcode = RCODE_NOERROR;
         // DNS Answer
         unsigned char QAnswer[] = {
             0xc0,0x0c, // 1100 0000 0000 1100 -> offset = 12
@@ -75,8 +75,9 @@ void morphRequestIntoARecordResponse(QByteArray &dnsrequest, std::vector<quint32
             0x00,0x00,0x00,0x00 // RDATA
         };
 
-        if(!responseIPs.empty())
+        if(responseIPs.size() > 0)
         {
+            quint16 count = 0;
             QByteArray answers;
             for(quint32 ip : responseIPs)
             {
@@ -86,21 +87,20 @@ void morphRequestIntoARecordResponse(QByteArray &dnsrequest, std::vector<quint32
                 QAnswer[15] = (ip & 0x000000ff);
 
                 // We add as many answers as ips we have to return to the requester
-                ptr[DNS_HEADER_ANSWER_COUNT_OFFSET]++;
                 answers.append((char*)QAnswer, 16);
+                count++;
             }
 
+            header->ans_count = qToBigEndian(count);
             if(spliceOffset < (quint32)dnsrequest.size()) //Make sure the splice offset / where the answer(s) should go is in bounds or don't use it
                 dnsrequest.insert(spliceOffset, answers);
             else
                 dnsrequest.append(answers);
-            //qDebug() << "Morphed into response:\n" << dnsrequest.toHex();
         }
         else
         {
-            // EDNS not supported
-            ptr[DNS_HEADER_FLAGS_OFFSET+1] &= 0xf0;
-            ptr[DNS_HEADER_FLAGS_OFFSET+1] |= 4; // NOTIMPL
+            // NXDOMAIN
+            header->rcode = RCODE_NXDOMAIN;
         }
     }
 }

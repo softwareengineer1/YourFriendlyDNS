@@ -1,6 +1,11 @@
 # YourFriendlyDNS
 A really awesome multi-platform (lin,win,mac,android) local caching and proxying dns server!
 
+{Version 1.1.5}
+1. Recursion flag now set, which eliminates the 'recursion requested but not available' warning from dig
+2. Responding to NXDOMAIN immediately with injected ip / custom ip instead of delaying at all... (I'm interpreting NXDOMAIN response code now, to respond immediately to it)
+3. Using the DNS_HEADER structure now when producing answer responses instead of manual offsets with constants
+
 {Version 1.1.4}
 [Bugfix release]
 1. Cache was only being triggered to be used after each second request for a certain domain, instead of after the first request.

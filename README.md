@@ -5,6 +5,7 @@ A really awesome multi-platform (lin,win,mac,android) local caching and proxying
 1. Recursion flag now set, which eliminates the 'recursion requested but not available' warning from dig
 2. Responding to NXDOMAIN immediately with injected ip / custom ip instead of delaying at all... (I'm interpreting NXDOMAIN response code now, to respond immediately to it)
 3. Using the DNS_HEADER structure now when producing answer responses instead of manual offsets with constants
+ ->1.1.5 is a beautiful version, I feel like everything is working correctly now.
 
 {Version 1.1.4}
 [Bugfix release]

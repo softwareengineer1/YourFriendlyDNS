@@ -1,6 +1,15 @@
 # YourFriendlyDNS
 A really awesome multi-platform (lin,win,mac,android) local caching and proxying dns server!
 
+{Version 1.1.4}
+[Bugfix release]
+1. Cache was only being triggered to be used after each second request for a certain domain, instead of after the first request.
+(Ex. request github.com -> get ips for it cache them -> return response, request github.com -> get ips, cache them -> return response, request github -> return cached ips built response. (until it expires then it will do this again)
+Now it will properly just do:
+request github.com -> get ips for it cache them -> return response, request github -> return cached ips built response. (until it expires then it will do this again))
+2. Added new blacklist default "*cdn.nintendo.net"
+So yes nothing major this time, but still the cache should be working properly and now it is again!
+
 {Version 1.1.3}
 [Bugfix release]
 1. Whitelist mode was broken in 1.1.2, it is now fixed and working again.

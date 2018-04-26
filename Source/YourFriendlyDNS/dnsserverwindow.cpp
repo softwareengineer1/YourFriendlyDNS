@@ -81,21 +81,7 @@ void DNSServerWindow::serversInitialized()
     connect(server, SIGNAL(queryRespondedTo(ListEntry)), this, SLOT(queryRespondedTo(ListEntry)));
     connect(settings, SIGNAL(clearDNSCache()), server, SLOT(clearDNSCache()));
 
-    QString listeningips = "Listening IPs: ";
-    QList<QHostAddress> list = QNetworkInterface::allAddresses();
-    for(int nIter=0; nIter<list.count(); nIter++)
-    {
-        if(!list[nIter].isLoopback())
-        {
-            if(list[nIter].protocol() == QAbstractSocket::IPv4Protocol)
-            {
-                server->listeningIPs.append(QHostAddress(list[nIter].toString()).toIPv4Address());
-                listeningips += list[nIter].toString() + ", ";
-            }
-        }
-    }
-    listeningips.truncate(listeningips.size()-2);
-    ui->listeningIPs->setText(listeningips);
+    listeningIPsUpdate();
     settingsLoad();
     settingsUpdated();
     settings->setiptablesButtonEnabled(false);
@@ -112,12 +98,41 @@ void DNSServerWindow::htmlChanged(QString &html)
         httpServer->setHTML(html);
 }
 
+void DNSServerWindow::listeningIPsUpdate()
+{
+    QString listeningips = "Listening IPs: ";
+    QList<QHostAddress> list = QNetworkInterface::allAddresses();
+    QVector<quint32> ipslist;
+    for(int nIter=0; nIter<list.count(); nIter++)
+    {
+        if(!list[nIter].isLoopback())
+        {
+            if(list[nIter].protocol() == QAbstractSocket::IPv4Protocol)
+            {
+                ipslist.append(QHostAddress(list[nIter].toString()).toIPv4Address());
+                listeningips += list[nIter].toString() + ", ";
+            }
+        }
+    }
+    listeningips.truncate(listeningips.size()-2);
+
+    if(ipslist.size() > 0)
+    {
+        server->listeningIPs = ipslist;
+        ui->listeningIPs->setText(listeningips);
+    }
+}
+
 void DNSServerWindow::setIPToFirstListening()
 {
     if(server && settings)
     {
-        if(!server->listeningIPs.empty())
+        listeningIPsUpdate();
+        if(server->listeningIPs.size() > 0)
+        {
             settings->setRespondingIP(QHostAddress(server->listeningIPs[0]).toString());
+            server->ipToRespondWith = server->listeningIPs[0];
+        }
     }
 }
 
@@ -270,7 +285,7 @@ bool DNSServerWindow::settingsSave()
     if(file.open(QFile::WriteOnly))
     {
         QJsonObject json;
-        json["version"] = "1.1.2";
+        json["version"] = "1.1.4";
         json["initialMode"] = server->initialMode;
         json["whitelistmode"] = server->whitelistmode;
         json["blockmode_returnlocalhost"] = server->blockmode_returnlocalhost;
@@ -357,17 +372,13 @@ bool DNSServerWindow::settingsLoad()
         settings->autoinject = json["autoinjectip"].toBool();
         if(settings->autoinject)
         {
-            server->ipToRespondWith = server->listeningIPs[0];
             settings->setAutoInject(settings->autoinject);
         }
-
-        qDebug() << "autoinject:" << settings->autoinject << "ip:" << QHostAddress(server->listeningIPs[0]);
     }
     else
     {
         settings->autoinject = true;
         settings->setAutoInject(true);
-        qDebug() << "autoinjected!";
     }
 
     if(json.contains("cachedMinutesValid") && json["cachedMinutesValid"].isDouble())
@@ -467,9 +478,12 @@ bool DNSServerWindow::settingsLoad()
     if(json.contains("version") && json["version"].isString())
     {
         version = json["version"].toString();
+        if(version != "1.1.4") //a default blacklist add for 1.1.4
+            server->blacklist.push_back(ListEntry("*cdn.nintendo.net"));
     }
     else
     {
+        //save file from below 1.1 (when version number started being saved in settings file)
         autoCaptureCaptivePortals();
     }
 

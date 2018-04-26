@@ -1,6 +1,16 @@
 #ifndef DNSSERVERWINDOW_H
 #define DNSSERVERWINDOW_H
 
+#include <QMainWindow>
+#include <QJsonDocument>
+#include <QJsonArray>
+#include <QJsonObject>
+#include <QFile>
+#include <QDir>
+#include <QStandardPaths>
+#include "settingswindow.h"
+#include "messagesthread.h"
+
 /* YourFriendlyDNS - A really awesome multi-platform (lin,win,mac,android) local caching and proxying dns server!
 Copyright (C) 2018  softwareengineer1 @ github.com/softwareengineer1
 Support my work so I can keep bringing you great free and open software!
@@ -24,16 +34,6 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License along
 with this program; if not, write to the Free Software Foundation, Inc.,
 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA. */
-
-#include <QMainWindow>
-#include <QJsonDocument>
-#include <QJsonArray>
-#include <QJsonObject>
-#include <QFile>
-#include <QDir>
-#include <QStandardPaths>
-#include "settingswindow.h"
-#include "messagesthread.h"
 
 namespace Ui {
 class DNSServerWindow;
@@ -77,6 +77,7 @@ private:
     SmallHTTPServer *httpServer;
     QString settingspath, html, version;
 
+    void listeningIPsUpdate();
     void appendToBlacklist(ListEntry e);
     void refreshList();
     bool settingsSave();

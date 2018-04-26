@@ -1,6 +1,10 @@
 #ifndef INITIALRESPONSE_H
 #define INITIALRESPONSE_H
 
+#include <QUdpSocket>
+#include <QDateTime>
+#include <QThread>
+
 /* YourFriendlyDNS - A really awesome multi-platform (lin,win,mac,android) local caching and proxying dns server!
 Copyright (C) 2018  softwareengineer1 @ github.com/softwareengineer1
 Support my work so I can keep bringing you great free and open software!
@@ -24,10 +28,6 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License along
 with this program; if not, write to the Free Software Foundation, Inc.,
 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA. */
-
-#include <QUdpSocket>
-#include <QDateTime>
-#include <QThread>
 
 // DNS header structure : 12 bytes
 struct DNS_HEADER
@@ -83,6 +83,7 @@ public:
         memset(&question, 0, sizeof(question));
         answeroffset = 0;
         isValid = isResponse = hasIPs = false;
+        expiry = QDateTime::currentDateTime();
     }
     DNSInfo(const DNSInfo &info)
     {

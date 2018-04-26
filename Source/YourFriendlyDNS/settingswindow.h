@@ -1,6 +1,9 @@
 #ifndef SETTINGSWINDOW_H
 #define SETTINGSWINDOW_H
 
+#include <QMainWindow>
+#include "indexhtml.h"
+
 /* YourFriendlyDNS - A really awesome multi-platform (lin,win,mac,android) local caching and proxying dns server!
 Copyright (C) 2018  softwareengineer1 @ github.com/softwareengineer1
 Support my work so I can keep bringing you great free and open software!
@@ -24,9 +27,6 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License along
 with this program; if not, write to the Free Software Foundation, Inc.,
 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA. */
-
-#include <QMainWindow>
-#include "indexhtml.h"
 
 /*MUST BLOCK:
 http://sun.hac.lp1.d4c.nintendo.net:443 - System Update Server/Nag

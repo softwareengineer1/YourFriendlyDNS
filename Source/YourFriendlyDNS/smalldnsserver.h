@@ -87,8 +87,9 @@ public:
     QUdpSocket serversock;
 
 private:
-    void parseRequest(QByteArray &dnsrequest, DNSInfo &dns);
-    void parseResponse(QByteArray &dnsresponse, DNSInfo &dns);
+    bool interpretHeader(const QByteArray &dnsmessage, DNSInfo &dns);
+    void parseRequest(const QByteArray &dnsrequest, DNSInfo &dns);
+    void parseResponse(const QByteArray &dnsresponse, DNSInfo &dns);
     void getHostAddresses(const QByteArray &dnsresponse, DNSInfo &dns);
     QHostAddress selectRandomDNSServer();
     QUdpSocket clientsock;

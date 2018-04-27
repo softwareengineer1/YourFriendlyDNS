@@ -48,7 +48,7 @@ void morphRequestIntoARecordResponse(QByteArray &dnsrequest, quint32 responseIP,
         QAnswer[14] = (responseIP & 0x0000ff00) >>  8;
         QAnswer[15] = (responseIP & 0x000000ff);
 
-        // We add our answer containing our ip of choice! (localhost/127.0.0.1 by default, change it in setings or adding a host with a custom ip to either list)
+        // We add our answer containing our ip of choice! (localhost/127.0.0.1/injected server ip by default, change it in setings or adding a host with a custom ip to either list)
         if(spliceOffset < (quint32)dnsrequest.size()) //Make sure the splice offset / where the answer(s) should go is in bounds or don't use it
             dnsrequest.insert(spliceOffset, (char*)QAnswer, 16);
         else
@@ -90,8 +90,8 @@ void morphRequestIntoARecordResponse(QByteArray &dnsrequest, std::vector<quint32
                 answers.append((char*)QAnswer, 16);
                 count++;
             }
-
             header->ans_count = qToBigEndian(count);
+
             if(spliceOffset < (quint32)dnsrequest.size()) //Make sure the splice offset / where the answer(s) should go is in bounds or don't use it
                 dnsrequest.insert(spliceOffset, answers);
             else
@@ -99,7 +99,8 @@ void morphRequestIntoARecordResponse(QByteArray &dnsrequest, std::vector<quint32
         }
         else
         {
-            // NXDOMAIN
+            // NXDOMAIN -> Non eXistent domain
+            header->ans_count = 0;
             header->rcode = RCODE_NXDOMAIN;
         }
     }

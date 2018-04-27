@@ -1,5 +1,7 @@
 # YourFriendlyDNS
 A really awesome multi-platform (lin,win,mac,android) local caching and proxying dns server!
+{Version 1.1.6}
+1. Code tidying up and minor adjustments.
 
 {Version 1.1.5}
 1. Recursion flag now set, which eliminates the 'recursion requested but not available' warning from dig

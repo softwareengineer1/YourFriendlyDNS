@@ -66,12 +66,6 @@ struct DNS_HEADER
     unsigned short add_count; // number of resource entries
 };
 
-/*#define DNS_HEADER_FLAGS_OFFSET 2
-#define DNS_HEADER_RESPONSE_FLAGS_OFFSET 4
-#define DNS_HEADER_ANSWER_COUNT_OFFSET 7
-#define AUTHORITATIVE_ANSWER_FLAG (1 << 7)*/
-
-
 struct QUESTION
 {
     unsigned short qtype;

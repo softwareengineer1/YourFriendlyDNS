@@ -285,7 +285,7 @@ bool DNSServerWindow::settingsSave()
     if(file.open(QFile::WriteOnly))
     {
         QJsonObject json;
-        json["version"] = "1.1.4";
+        json["version"] = "1.1.5";
         json["initialMode"] = server->initialMode;
         json["whitelistmode"] = server->whitelistmode;
         json["blockmode_returnlocalhost"] = server->blockmode_returnlocalhost;
@@ -478,8 +478,8 @@ bool DNSServerWindow::settingsLoad()
     if(json.contains("version") && json["version"].isString())
     {
         version = json["version"].toString();
-        if(version != "1.1.4") //a default blacklist add for 1.1.4
-            server->blacklist.push_back(ListEntry("*cdn.nintendo.net"));
+        if(version != "1.1.5") //a default blacklist add for 1.1.5
+            appendToBlacklist(ListEntry("*cdn.nintendo.net"));
     }
     else
     {

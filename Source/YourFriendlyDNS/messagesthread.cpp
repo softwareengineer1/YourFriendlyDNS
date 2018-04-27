@@ -27,8 +27,8 @@ AppData* AppData::instance = nullptr;
 
 AppData::AppData()
 {
-    dnsServer = 0;
-    httpServer = 0;
+    dnsServer = nullptr;
+    httpServer = nullptr;
 }
 
 AppData* AppData::get()
@@ -65,5 +65,4 @@ void MessagesThread::run()
 
     qDebug() << "MessagesThread started, for handling server duties!";
     exec(); //handles the signals and slots for objects owned by this thread
-    //(eh, that wasn't doing anything that was here anyway, better without it and I think solid now for real!
 }

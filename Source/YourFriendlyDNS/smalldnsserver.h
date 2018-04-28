@@ -87,7 +87,7 @@ public:
     QUdpSocket serversock;
 
 private:
-    DNSInfo* getCachedEntry(QString byDomain, quint16 andType);
+    DNSInfo* getCachedEntry(const QString &byDomain, quint16 andType);
     bool interpretHeader(const QByteArray &dnsmessage, DNSInfo &dns);
     void parseRequest(const QByteArray &dnsrequest, DNSInfo &dns);
     void parseResponse(const QByteArray &dnsresponse, DNSInfo &dns);

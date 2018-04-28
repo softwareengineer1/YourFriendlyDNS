@@ -179,16 +179,16 @@ void SmallDNSServer::processDNSRequests()
                 {
                     if(cached->ipaddresses.size() == 0) cached->ipaddresses.push_back(ipToRespondWith);
                     //Let's use our cached IPs, and morph this request into a response containing them as appended dns answers
-                    morphRequestIntoARecordResponse(datagram, cached->ipaddresses, cached->answeroffset);
+                    morphRequestIntoARecordResponse(datagram, cached->ipaddresses, dns.answeroffset);
                     serversock.writeDatagram(datagram, sender, senderPort);
-                    emit queryRespondedTo(ListEntry(cached->domainString, cached->ipaddresses[0]));
-                    qDebug() << "Cached IPs returned! (first one):" << QHostAddress(cached->ipaddresses[0]) << "for domain:" << cached->domainString;
+                    emit queryRespondedTo(ListEntry(dns.domainString, cached->ipaddresses[0]));
+                    qDebug() << "Cached IPs returned! (first one):" << QHostAddress(cached->ipaddresses[0]) << "for domain:" << dns.domainString;
                 }
-                else if(cached->isValid)
+                else
                 {
                     *(quint16*)cached->res.data() = *(quint16*)dns.req.data();
                     serversock.writeDatagram(cached->res, sender, senderPort);
-                    qDebug() << "Cached other record returned! of type:" << cached->question.qtype << "for domain:" << cached->domainString;
+                    qDebug() << "Cached other record returned! of type:" << cached->question.qtype << "for domain:" << dns.domainString;
                 }
             }
         }
@@ -247,7 +247,7 @@ void SmallDNSServer::processLookups()
     }
 }
 
-DNSInfo* SmallDNSServer::getCachedEntry(QString byDomain, quint16 andType)
+DNSInfo* SmallDNSServer::getCachedEntry(const QString &byDomain, quint16 andType)
 {
     size_t cachedSize = cachedDNSResponses.size();
     for(size_t i = 0; i < cachedSize; i++)

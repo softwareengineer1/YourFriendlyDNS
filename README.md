@@ -1,5 +1,9 @@
 # YourFriendlyDNS
 A really awesome multi-platform (lin,win,mac,android) local caching and proxying dns server!
+
+{Version 1.1.7}
+1.Code reduction while keeping the same functionality and speed
+
 {Version 1.1.6}
 1. Code tidying up and minor adjustments.
 

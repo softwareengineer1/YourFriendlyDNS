@@ -141,6 +141,8 @@ void SmallDNSServer::processDNSRequests()
         if(shouldCacheDomain)
             shouldCacheDomain = dns.domainString.contains(".");
 
+        qDebug() << "shouldCacheDomain: " << shouldCacheDomain;
+
         //Rewritten and shortened
         if(!shouldCacheDomain || initialMode)
         {
@@ -162,7 +164,9 @@ void SmallDNSServer::processDNSRequests()
 
             if(shouldCacheDomain)
             {
-                cached->expiry = QDateTime::currentDateTime().addSecs(cachedMinutesValid * 60);
+                qDebug() << "Caching this domain->" << dns.domainString;
+                if(cached) //If cached, update the expiry now, even though we're about to update it again in a moment
+                    cached->expiry = QDateTime::currentDateTime().addSecs(cachedMinutesValid * 60);
                 //Here's where we forward the received request to a real dns server, if not cached yet or its time to update the cache for this domain
                 //Only executes if the domain is whitelisted or not blacklisted (depending on which mode you're using)
                 qDebug() << "Making DNS request type:" << dns.question.qtype << "for domain:" << dns.domainString << "request id:" << dns.header.id << "datagram:" << datagram;

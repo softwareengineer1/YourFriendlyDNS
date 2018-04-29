@@ -312,7 +312,8 @@ bool DNSServerWindow::settingsSave()
         {
             QJsonObject subObject;
             subObject["hostname"] = w.hostname;
-            subObject["ip"] = (int)w.ip;
+            if(w.ip != 0) //No sense wasting space in the json file for null values
+                subObject["ip"] = (int)w.ip;
             whitelistarray.append(subObject);
         }
         json["whitelist"] = whitelistarray;
@@ -322,7 +323,8 @@ bool DNSServerWindow::settingsSave()
         {
             QJsonObject subObject;
             subObject["hostname"] = b.hostname;
-            subObject["ip"] = (int)b.ip;
+            if(b.ip != 0)
+                subObject["ip"] = (int)b.ip;
             blacklistarray.append(subObject);
         }
         json["blacklist"] = blacklistarray;

@@ -2,7 +2,8 @@
 A really awesome multi-platform (lin,win,mac,android) local caching and proxying dns server!
 
 {Version 1.1.7}
-1.Code reduction while keeping the same functionality and speed
+1. Code reduction while keeping the same functionality and speed
+2. + One small fix of a slight error made during code reduction
 
 {Version 1.1.6}
 1. Code tidying up and minor adjustments.

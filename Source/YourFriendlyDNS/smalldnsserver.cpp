@@ -141,8 +141,6 @@ void SmallDNSServer::processDNSRequests()
         if(shouldCacheDomain)
             shouldCacheDomain = dns.domainString.contains(".");
 
-        qDebug() << "shouldCacheDomain: " << shouldCacheDomain;
-
         //Rewritten and shortened
         if(!shouldCacheDomain || initialMode)
         {

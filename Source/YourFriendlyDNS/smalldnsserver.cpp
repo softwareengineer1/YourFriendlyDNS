@@ -31,6 +31,7 @@ SmallDNSServer::SmallDNSServer(QObject *parent)
     dnsServerPort = 53; //port 53 by default android will figure it out and go 5333 by default
     httpServerPort = 80;
     cachedMinutesValid = 7;
+    dnsTTL = 25200;
 
     whitelistmode = initialMode = blockmode_returnlocalhost = true;
     //default is whitelist mode, with just these three entries to get you started!
@@ -147,7 +148,7 @@ void SmallDNSServer::processDNSRequests()
             if(blockmode_returnlocalhost)
             {
                 qDebug() << "Returning custom IP:" << QHostAddress(customIP).toString() << "for domain:" << dns.domainString;
-                morphRequestIntoARecordResponse(datagram, customIP, dns.answeroffset);
+                morphRequestIntoARecordResponse(datagram, customIP, dns.answeroffset, dnsTTL);
                 serversock.writeDatagram(datagram, sender, senderPort);
                 emit queryRespondedTo(ListEntry(dns.domainString, customIP));
             }
@@ -172,6 +173,7 @@ void SmallDNSServer::processDNSRequests()
 
                 dns.sender = sender;
                 dns.senderPort = senderPort;
+                dns.ttl = dnsTTL;
                 InitialResponse *ir = new InitialResponse(dns);
                 connect(this, &SmallDNSServer::lookupDoneSendResponseNow, ir, &InitialResponse::lookupDoneSendResponseNow);
             }
@@ -181,7 +183,7 @@ void SmallDNSServer::processDNSRequests()
                 {
                     if(cached->ipaddresses.size() == 0) cached->ipaddresses.push_back(ipToRespondWith);
                     //Let's use our cached IPs, and morph this request into a response containing them as appended dns answers
-                    morphRequestIntoARecordResponse(datagram, cached->ipaddresses, dns.answeroffset);
+                    morphRequestIntoARecordResponse(datagram, cached->ipaddresses, dns.answeroffset, dnsTTL);
                     serversock.writeDatagram(datagram, sender, senderPort);
                     emit queryRespondedTo(ListEntry(dns.domainString, cached->ipaddresses[0]));
                     qDebug() << "Cached IPs returned! (first one):" << QHostAddress(cached->ipaddresses[0]) << "for domain:" << dns.domainString;
@@ -257,9 +259,7 @@ DNSInfo* SmallDNSServer::getCachedEntry(const QString &byDomain, quint16 andType
         DNSInfo *pDNS = &cachedDNSResponses[i];
 
         if(pDNS->domainString == byDomain && pDNS->question.qtype == andType)
-        {
             return pDNS;
-        }
     }
 
     return nullptr;

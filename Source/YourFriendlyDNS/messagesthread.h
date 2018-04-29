@@ -45,6 +45,7 @@ class MessagesThread : public QThread
 {
     Q_OBJECT
 public:
+    ~MessagesThread();
     AppData *data;
     void run();
 

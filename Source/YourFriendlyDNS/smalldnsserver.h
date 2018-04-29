@@ -78,8 +78,8 @@ public:
     bool startServer(QHostAddress address = QHostAddress::AnyIPv4, quint16 port = 53, bool reuse = false);
     QString getDomainString(const QByteArray &dnsmessage, DNSInfo &dns);
 
-    bool whitelistmode, blockmode_returnlocalhost, initialMode;
-    quint32 ipToRespondWith, cachedMinutesValid;
+    bool whitelistmode, blockmode_returnlocalhost, initialMode, autoTTL;
+    quint32 ipToRespondWith, cachedMinutesValid, dnsTTL;
     quint16 dnsServerPort, httpServerPort;
     QVector<ListEntry> whitelist,blacklist;
     QVector<QString> realdns;

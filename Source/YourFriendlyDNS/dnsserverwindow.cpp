@@ -64,10 +64,6 @@ DNSServerWindow::DNSServerWindow(QWidget *parent) : QMainWindow(parent), ui(new 
 DNSServerWindow::~DNSServerWindow()
 {
     settingsSave();
-    if(httpServer)
-        delete httpServer;
-    if(server)
-        delete server;
     if(settings)
         delete settings;
 
@@ -144,6 +140,8 @@ void DNSServerWindow::settingsUpdated()
         server->ipToRespondWith = QHostAddress(settings->getRespondingIP()).toIPv4Address();
         server->cachedMinutesValid = settings->getCachedMinutesValid();
         server->realdns = settings->returnRealDNSServers();
+        server->dnsTTL = settings->dnsTTL;
+        server->autoTTL = settings->autoTTL;
     }
 }
 
@@ -155,8 +153,7 @@ void DNSServerWindow::queryRespondedTo(ListEntry e)
     {
         if(ui->dnsqueries->topLevelItem(i)->text(1) == e.hostname)
         {
-            //if(e.ip != 0)
-                ui->dnsqueries->topLevelItem(i)->setText(0, ip);
+            ui->dnsqueries->topLevelItem(i)->setText(0, ip);
             return;
         }
     }
@@ -293,6 +290,8 @@ bool DNSServerWindow::settingsSave()
         server->ipToRespondWith = QHostAddress(settings->getRespondingIP()).toIPv4Address();
         json["ipToRespondWith"] = (int)server->ipToRespondWith;
         json["cachedMinutesValid"] = (int)server->cachedMinutesValid;
+        json["dnsTTL"] = (int)server->dnsTTL;
+        json["autoTTL"] = server->autoTTL;
         server->dnsServerPort = settings->getDNSServerPort().toInt();
         json["dnsServerPort"] = server->dnsServerPort;
         server->httpServerPort = settings->getHTTPServerPort().toInt();
@@ -387,6 +386,16 @@ bool DNSServerWindow::settingsLoad()
     {
         server->cachedMinutesValid = json["cachedMinutesValid"].toInt();
         settings->setCachedMinutesValid(server->cachedMinutesValid);
+    }
+    if(json.contains("dnsTTL") && json["dnsTTL"].isDouble())
+    {
+        server->dnsTTL = json["dnsTTL"].toInt();
+        settings->setdnsTTL(server->dnsTTL);
+    }
+    if(json.contains("autoTTL") && json["autoTTL"].isBool())
+    {
+        server->autoTTL = json["autoTTL"].toBool();
+        settings->setAutoTTL(server->autoTTL);
     }
 
     if(json.contains("dnsServerPort") && json["dnsServerPort"].isDouble())

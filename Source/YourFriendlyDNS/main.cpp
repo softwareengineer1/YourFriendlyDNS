@@ -35,5 +35,7 @@ int main(int argc, char *argv[])
     DNSServerWindow *w = new DNSServerWindow();
     w->show();
 
-    return a.exec();
+    int r = a.exec();
+    delete w;
+    return r;
 }

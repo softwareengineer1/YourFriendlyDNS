@@ -90,6 +90,7 @@ public:
         memset(&header, 0, sizeof(header));
         memset(&question, 0, sizeof(question));
         answeroffset = 0;
+        ttl = 0;
         isValid = isResponse = hasIPs = false;
         expiry = QDateTime::currentDateTime();
     }
@@ -99,6 +100,7 @@ public:
         memcpy(&question, &info.question, sizeof(question));
         domainString = info.domainString;
         answeroffset = info.answeroffset;
+        ttl = info.ttl;
         isValid = info.isValid;
         isResponse = info.isResponse;
         hasIPs = info.hasIPs;
@@ -117,7 +119,7 @@ public:
     QUESTION question;
     QString domainString;
     quint16 senderPort;
-    quint32 answeroffset;
+    quint32 answeroffset, ttl;
     bool isValid, isResponse, hasIPs;
     std::vector<quint32> ipaddresses;
     QDateTime expiry;
@@ -138,8 +140,8 @@ public:
     }
 };
 
-void morphRequestIntoARecordResponse(QByteArray &dnsrequest, quint32 responseIP, quint32 spliceOffset);
-void morphRequestIntoARecordResponse(QByteArray &dnsrequest, std::vector<quint32> &responseIPs, quint32 spliceOffset);
+void morphRequestIntoARecordResponse(QByteArray &dnsrequest, quint32 responseIP, quint32 spliceOffset, quint32 ttl = 13337);
+void morphRequestIntoARecordResponse(QByteArray &dnsrequest, std::vector<quint32> &responseIPs, quint32 spliceOffset, quint32 ttl = 13337);
 
 class InitialResponse : public QObject
 {

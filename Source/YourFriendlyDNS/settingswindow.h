@@ -2,6 +2,7 @@
 #define SETTINGSWINDOW_H
 
 #include <QMainWindow>
+#include <QDebug>
 #include "indexhtml.h"
 
 /* YourFriendlyDNS - A really awesome multi-platform (lin,win,mac,android) local caching and proxying dns server!
@@ -88,13 +89,16 @@ public:
     QString getDNSServerPort();
     QString getHTTPServerPort();
     void setCachedMinutesValid(quint32 minutesValid);
+    void setAutoTTL(bool autottl);
+    void setdnsTTL(quint32 dnsttl);
     void setDNSServerPort(quint16 dnsServerPort);
     void setHTTPServerPort(quint16 httpServerPort);
     void setiptablesButtonEnabled(bool enabled = true);
     quint32 getCachedMinutesValid();
     void setBlockOptionNoResponse();
     void setAutoInject(bool checked);
-    bool blockmode_localhost, autoinject;
+    bool blockmode_localhost, autoinject, autoTTL;
+    quint32 dnsTTL;
 
 signals:
     void settingsUpdated();
@@ -105,7 +109,6 @@ signals:
     void autoInjectIfEnabled();
 
 private slots:
-    void onShow();
     void on_addButton_clicked();
     void on_removeButton_clicked();
     void on_option_localhost_clicked();
@@ -119,6 +122,9 @@ private slots:
     void on_autoinjectBox_stateChanged(int arg1);
     void on_captureCaptive_clicked();
     void on_iptablesUndo_clicked();
+    void on_dnsTTL_textChanged(const QString &arg1);
+    void on_sameAsCachedBox_stateChanged(int arg1);
+    void on_cacheValidMinutes_textChanged(const QString &arg1);
 
 private:
     Ui::SettingsWindow *ui;

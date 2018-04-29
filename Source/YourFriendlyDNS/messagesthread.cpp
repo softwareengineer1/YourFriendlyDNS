@@ -66,3 +66,12 @@ void MessagesThread::run()
     qDebug() << "MessagesThread started, for handling server duties!";
     exec(); //handles the signals and slots for objects owned by this thread
 }
+
+MessagesThread::~MessagesThread()
+{
+    data = AppData::get();
+    if(data->httpServer)
+        delete data->httpServer;
+    if(data->dnsServer)
+        delete data->dnsServer;
+}

@@ -24,7 +24,7 @@ You should have received a copy of the GNU General Public License along
 with this program; if not, write to the Free Software Foundation, Inc.,
 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA. */
 
-void morphRequestIntoARecordResponse(QByteArray &dnsrequest, quint32 responseIP, quint32 spliceOffset)
+void morphRequestIntoARecordResponse(QByteArray &dnsrequest, quint32 responseIP, quint32 spliceOffset, quint32 ttl)
 {
     if(dnsrequest.size() >= DNS_HEADER_SIZE) //Make sure there's at least a dns header here to write to
     {
@@ -48,6 +48,11 @@ void morphRequestIntoARecordResponse(QByteArray &dnsrequest, quint32 responseIP,
         QAnswer[14] = (responseIP & 0x0000ff00) >>  8;
         QAnswer[15] = (responseIP & 0x000000ff);
 
+        QAnswer[6] = (ttl & 0xff000000) >> 24;
+        QAnswer[7] = (ttl & 0x00ff0000) >> 16;
+        QAnswer[8] = (ttl & 0x0000ff00) >>  8;
+        QAnswer[9] = (ttl & 0x000000ff);
+
         // We add our answer containing our ip of choice! (localhost/127.0.0.1/injected server ip by default, change it in setings or adding a host with a custom ip to either list)
         if(spliceOffset < (quint32)dnsrequest.size()) //Make sure the splice offset / where the answer(s) should go is in bounds or don't use it
             dnsrequest.insert(spliceOffset, (char*)QAnswer, 16);
@@ -56,7 +61,7 @@ void morphRequestIntoARecordResponse(QByteArray &dnsrequest, quint32 responseIP,
     }
 }
 
-void morphRequestIntoARecordResponse(QByteArray &dnsrequest, std::vector<quint32> &responseIPs, quint32 spliceOffset)
+void morphRequestIntoARecordResponse(QByteArray &dnsrequest, std::vector<quint32> &responseIPs, quint32 spliceOffset, quint32 ttl)
 {
     if(dnsrequest.size() >= DNS_HEADER_SIZE) //Make sure there's at least a dns header here to write to
     {
@@ -74,6 +79,11 @@ void morphRequestIntoARecordResponse(QByteArray &dnsrequest, std::vector<quint32
             0x00,0x04, // RD Length
             0x00,0x00,0x00,0x00 // RDATA
         };
+
+        QAnswer[6] = (ttl & 0xff000000) >> 24;
+        QAnswer[7] = (ttl & 0x00ff0000) >> 16;
+        QAnswer[8] = (ttl & 0x0000ff00) >>  8;
+        QAnswer[9] = (ttl & 0x000000ff);
 
         if(responseIPs.size() > 0)
         {
@@ -114,6 +124,7 @@ InitialResponse::InitialResponse(DNSInfo &dns, QObject *parent)
     respondTo.sender = dns.sender;
     respondTo.senderPort = dns.senderPort;
     respondTo.req = dns.req;
+    respondTo.ttl = dns.ttl;
     responseHandled = false;
 }
 
@@ -129,7 +140,7 @@ void InitialResponse::lookupDoneSendResponseNow(DNSInfo &dns, QUdpSocket *server
                 {
                     qDebug() << "[A RECORD] to:" << respondTo.sender << respondTo.senderPort;
                     qDebug() << "request:" << respondTo.req << "answer offset:" << dns.answeroffset;
-                    morphRequestIntoARecordResponse(respondTo.req, dns.ipaddresses, dns.answeroffset);
+                    morphRequestIntoARecordResponse(respondTo.req, dns.ipaddresses, dns.answeroffset, respondTo.ttl);
                     qDebug() << "response:" << respondTo.req;
                     serversocket->writeDatagram(respondTo.req, respondTo.sender, respondTo.senderPort);
                 }

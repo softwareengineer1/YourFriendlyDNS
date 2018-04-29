@@ -1,6 +1,10 @@
 # YourFriendlyDNS
 A really awesome multi-platform (lin,win,mac,android) local caching and proxying dns server!
 
+{Version 1.1.8}
+1. Added customizable DNS TTL instead of hardcoded, or auto setting matching your cached entry minutes valid value but in seconds.
+2. More cleanly exiting (freeing up objects created)
+
 {Version 1.1.7}
 1. Code reduction while keeping the same functionality and speed
 2. + One small fix of a slight error made during code reduction

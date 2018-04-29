@@ -38,11 +38,6 @@ SettingsWindow::~SettingsWindow()
     delete ui;
 }
 
-void SettingsWindow::onShow()
-{
-
-}
-
 QVector<QString> SettingsWindow::returnRealDNSServers()
 {
      QVector<QString> dnsservers;
@@ -131,6 +126,23 @@ void SettingsWindow::setAutoInject(bool checked)
         emit setIPToFirstListening();
 }
 
+void SettingsWindow::setAutoTTL(bool autottl)
+{
+    autoTTL = autottl;
+    if(autoTTL)
+    {
+        quint32 ttl = (ui->cacheValidMinutes->text().toInt() * 60);
+        ui->dnsTTL->setText(QString("%1").arg(ttl));
+        qDebug() << "Auto-setting DNS TTL:" << ttl;
+    }
+}
+
+void SettingsWindow::setdnsTTL(quint32 dnsttl)
+{
+    dnsTTL = dnsttl;
+    emit settingsUpdated();
+}
+
 void SettingsWindow::on_addButton_clicked()
 {
     if(!isExisting(ui->edit_dnsserver->text()))
@@ -210,4 +222,38 @@ void SettingsWindow::on_captureCaptive_clicked()
 void SettingsWindow::on_iptablesUndo_clicked()
 {
     emit iptablesUndoAndroid();
+}
+
+void SettingsWindow::on_dnsTTL_textChanged(const QString &arg1)
+{
+    if(arg1.size() > 0)
+    {
+        dnsTTL = arg1.toInt();
+        emit settingsUpdated();
+    }
+}
+
+void SettingsWindow::on_sameAsCachedBox_stateChanged(int arg1)
+{
+    if(arg1)
+    {
+        autoTTL = true;
+        setAutoTTL(autoTTL);
+    }
+    else
+        autoTTL = false;
+
+    emit settingsUpdated();
+}
+
+void SettingsWindow::on_cacheValidMinutes_textChanged(const QString &arg1)
+{
+    if(arg1.size() > 0)
+    {
+        if(autoTTL)
+        {
+            setAutoTTL(autoTTL);
+        }
+        emit settingsUpdated();
+    }
 }

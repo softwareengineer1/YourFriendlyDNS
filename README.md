@@ -7,6 +7,9 @@ A really awesome multi-platform (lin,win,mac,android) local caching and proxying
  ->Despite checking each domain with a case insensitive match with wildcard support I still inserted into the cache and checked against it an a case sensitive way.
  ->To solve it I changed this one line: “dns.domainString = fullname;” to “dns.domainString = fullname.toLower();” which is upon first interpreting the domain.
  ->Now if an altered case domain name is given (ex. “ExAMpLE.CoM” it’s always seen as “example.com”, anywhere in the application after it’s first interpreted)
+3. Also fixed customized dns and http server ports not actually being used by preloading the dns and http server ports from the config file right away, and reading the other info from it later.
+ -> I noticed this when setting the dns and http server ports above 1024 saving it and running it not as root and it still attempted to bind to port 53 and 80 ignoring the config (because I was reading it too late after the servers were already initialized and started)
+ -> Now you can run it as non root, if you have and prefer some other way to redirect ports 53 and 80 to it (like iptables which I use on android in here [that itself still requires root though]) or if you can specify a port for your dns server on whatever device you’re using and obviously you can for http. (But it won’t really work as an auto captive portal in that case)
 
 {Version 1.1.8}
 1. Added customizable DNS TTL instead of hardcoded, or auto setting matching your cached entry minutes valid value but in seconds.

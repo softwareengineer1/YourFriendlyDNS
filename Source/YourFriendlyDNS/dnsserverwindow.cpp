@@ -28,21 +28,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 DNSServerWindow::DNSServerWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::DNSServerWindow)
 {
     ui->setupUi(this);
-
     qRegisterMetaType<ListEntry>("ListEntry");
-
-    messagesThread = new MessagesThread();
-    connect(messagesThread, SIGNAL(finished()), this, SLOT(deleteLater()));
-    connect(messagesThread, SIGNAL(serversInitialized()), this, SLOT(serversInitialized()));
-    connect(messagesThread, SIGNAL(androidInit()), this, SLOT(androidInit()));
-    messagesThread->start();
-
-    settings = new SettingsWindow();
-    connect(settings, SIGNAL(settingsUpdated()), this, SLOT(settingsUpdated()));
-    connect(settings, SIGNAL(setIPToFirstListening()), this, SLOT(setIPToFirstListening()));
-    connect(settings, SIGNAL(autoCaptureCaptivePortals()), this, SLOT(autoCaptureCaptivePortals()));
-    connect(settings, SIGNAL(iptablesUndoAndroid()), this, SLOT(iptablesUndoAndroid()));
-    connect(settings->indexhtml, SIGNAL(htmlChanged(QString&)), this, SLOT(htmlChanged(QString&)));
 
     settingspath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
     QDir d{settingspath};
@@ -52,6 +38,21 @@ DNSServerWindow::DNSServerWindow(QWidget *parent) : QMainWindow(parent), ui(new 
     settingspath += QDir::separator();
     settingspath += "YourFriendlyDNS.settings";
     qDebug() << "YourFriendlyDNS settings file path:" << settingspath;
+
+    settings = new SettingsWindow();
+    connect(settings, SIGNAL(settingsUpdated()), this, SLOT(settingsUpdated()));
+    connect(settings, SIGNAL(setIPToFirstListening()), this, SLOT(setIPToFirstListening()));
+    connect(settings, SIGNAL(autoCaptureCaptivePortals()), this, SLOT(autoCaptureCaptivePortals()));
+    connect(settings, SIGNAL(iptablesUndoAndroid()), this, SLOT(iptablesUndoAndroid()));
+    connect(settings->indexhtml, SIGNAL(htmlChanged(QString&)), this, SLOT(htmlChanged(QString&)));
+
+    preloadServerPorts();
+
+    messagesThread = new MessagesThread();
+    connect(messagesThread, SIGNAL(finished()), this, SLOT(deleteLater()));
+    connect(messagesThread, SIGNAL(serversInitialized()), this, SLOT(serversInitialized()));
+    connect(messagesThread, SIGNAL(androidInit()), this, SLOT(androidInit()));
+    messagesThread->start();
 
     #ifdef Q_OS_ANDROID
     ui->settingsButton->setIconSize(QSize(128,128));
@@ -292,10 +293,10 @@ bool DNSServerWindow::settingsSave()
         json["cachedMinutesValid"] = (int)server->cachedMinutesValid;
         json["dnsTTL"] = (int)server->dnsTTL;
         json["autoTTL"] = server->autoTTL;
-        server->dnsServerPort = settings->getDNSServerPort().toInt();
-        json["dnsServerPort"] = server->dnsServerPort;
-        server->httpServerPort = settings->getHTTPServerPort().toInt();
-        json["httpServerPort"] = server->httpServerPort;
+        AppData::get()->dnsServerPort = settings->getDNSServerPort().toInt();
+        json["dnsServerPort"] = AppData::get()->dnsServerPort;
+        AppData::get()->httpServerPort = settings->getHTTPServerPort().toInt();
+        json["httpServerPort"] = AppData::get()->httpServerPort;
         html = settings->indexhtml->getHTML();
         json["html"] = html;
 
@@ -337,17 +338,42 @@ bool DNSServerWindow::settingsSave()
     return false;
 }
 
+void DNSServerWindow::preloadServerPorts()
+{
+    QFile file(settingspath);
+    if(!file.open(QFile::ReadOnly))
+        return;
+
+    QJsonObject json = QJsonDocument::fromJson(file.readAll()).object();
+
+    if(json.contains("dnsServerPort") && json["dnsServerPort"].isDouble())
+    {
+        AppData::get()->dnsServerPort = json["dnsServerPort"].toInt();
+        settings->setDNSServerPort(AppData::get()->dnsServerPort);
+    }
+    qDebug() << "Using dns server port:" << AppData::get()->dnsServerPort;
+
+    if(json.contains("httpServerPort") && json["httpServerPort"].isDouble())
+    {
+        AppData::get()->httpServerPort = json["httpServerPort"].toInt();
+        settings->setHTTPServerPort(AppData::get()->httpServerPort);
+    }
+    qDebug() << "Using http server port:" << AppData::get()->httpServerPort;
+
+    file.close();
+}
+
 bool DNSServerWindow::settingsLoad()
 {
     QFile file(settingspath);
     if(!file.open(QFile::ReadOnly))
     {
         settingsSave();
-        return false;
+        if(!file.open(QFile::ReadOnly))
+            return false;
     }
 
-    QJsonDocument jsondoc(QJsonDocument::fromJson(file.readAll()));
-    QJsonObject json = jsondoc.object();
+    QJsonObject json = QJsonDocument::fromJson(file.readAll()).object();
 
     if(json.contains("initialMode") && json["initialMode"].isBool())
     {
@@ -397,26 +423,6 @@ bool DNSServerWindow::settingsLoad()
         server->autoTTL = json["autoTTL"].toBool();
         settings->setAutoTTL(server->autoTTL);
     }
-
-    if(json.contains("dnsServerPort") && json["dnsServerPort"].isDouble())
-    {
-        server->dnsServerPort = json["dnsServerPort"].toInt();
-        settings->setDNSServerPort(server->dnsServerPort);
-    }
-    else
-        server->dnsServerPort = 53;
-
-    qDebug() << "Using dns server port:" << server->dnsServerPort;
-
-    if(json.contains("httpServerPort") && json["httpServerPort"].isDouble())
-    {
-        server->httpServerPort = json["httpServerPort"].toInt();
-        settings->setHTTPServerPort(server->httpServerPort);
-    }
-    else
-        server->httpServerPort = 80;
-
-    qDebug() << "Using http server port:" << server->httpServerPort;
 
     if(json.contains("html") && json["html"].isString())
     {

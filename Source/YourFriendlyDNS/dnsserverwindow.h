@@ -80,6 +80,7 @@ private:
     void listeningIPsUpdate();
     void appendToBlacklist(ListEntry e);
     void refreshList();
+    void preloadServerPorts();
     bool settingsSave();
     bool settingsLoad();
 };

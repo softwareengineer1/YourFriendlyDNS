@@ -29,6 +29,8 @@ AppData::AppData()
 {
     dnsServer = nullptr;
     httpServer = nullptr;
+    dnsServerPort = 53;
+    httpServerPort = 80;
 }
 
 AppData* AppData::get()
@@ -47,20 +49,20 @@ void MessagesThread::run()
     emit serversInitialized();
 
     #ifdef Q_OS_ANDROID
-    if(data->dnsServer->dnsServerPort == 53)
-        data->dnsServer->dnsServerPort = 5333;
-    if(data->dnsServer->httpServerPort == 80)
-        data->dnsServer->httpServerPort = 8080;
+    if(data->dnsServerPort == 53)
+        data->dnsServerPort = 5333;
+    if(data->httpServerPort == 80)
+        data->httpServerPort = 8080;
 
-    AndroidSU_ServerOP *suOP = new AndroidSU_ServerOP(AndroidSU_ServerOP::opcode::iptablesSet, data->dnsServer->dnsServerPort, data->dnsServer->httpServerPort);
+    AndroidSU_ServerOP *suOP = new AndroidSU_ServerOP(AndroidSU_ServerOP::opcode::iptablesSet, data->dnsServerPort, data->httpServerPort);
     connect(suOP, SIGNAL(finished()), suOP, SLOT(deleteLater()));
     suOP->start();
     emit androidInit();
     #endif
 
-    if(data->dnsServer->startServer(QHostAddress::AnyIPv4, data->dnsServer->dnsServerPort))
+    if(data->dnsServer->startServer(QHostAddress::AnyIPv4, data->dnsServerPort))
         qDebug() << "DNS server started on address:" << data->dnsServer->serversock.localAddress() << "and port:" << data->dnsServer->serversock.localPort();
-    if(data->httpServer->startServer(QHostAddress::AnyIPv4, data->dnsServer->httpServerPort))
+    if(data->httpServer->startServer(QHostAddress::AnyIPv4, data->httpServerPort))
         qDebug() << "HTTP server started on address:" << data->httpServer->serverAddress() << "and port:" << data->httpServer->serverPort();
 
     qDebug() << "MessagesThread started, for handling server duties!";

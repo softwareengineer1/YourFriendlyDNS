@@ -140,6 +140,9 @@ public:
     }
 };
 
+#define TYPE_WHITELIST 1
+#define TYPE_BLACKLIST 2
+
 void morphRequestIntoARecordResponse(QByteArray &dnsrequest, quint32 responseIP, quint32 spliceOffset, quint32 ttl = 13337);
 void morphRequestIntoARecordResponse(QByteArray &dnsrequest, std::vector<quint32> &responseIPs, quint32 spliceOffset, quint32 ttl = 13337);
 

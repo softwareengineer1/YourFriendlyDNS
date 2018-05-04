@@ -28,8 +28,6 @@ SmallDNSServer::SmallDNSServer(QObject *parent)
 {
     Q_UNUSED(parent);
     ipToRespondWith = QHostAddress("127.0.0.1").toIPv4Address();
-    dnsServerPort = 53; //port 53 by default android will figure it out and go 5333 by default
-    httpServerPort = 80;
     cachedMinutesValid = 7;
     dnsTTL = 25200;
 
@@ -102,45 +100,36 @@ void SmallDNSServer::processDNSRequests()
 
         bool shouldCacheDomain;
         quint32 customIP = ipToRespondWith;
-        std::string tame = (char*)dns.domainString.toUtf8().data(); //I think this one is better
+        std::string domain = (char*)dns.domainString.toUtf8().data();
         if(whitelistmode)
         {
-            bool whitelisted = false;
-            for(ListEntry &whitelistedDomain : whitelist)
+            ListEntry *whiteListed = getListEntry(domain, TYPE_WHITELIST);
+            if(whiteListed)
             {
-                std::string wild = whitelistedDomain.hostname.toUtf8().data();
-                if(GeneralTextCompare((char*)tame.c_str(), (char*)wild.c_str()))
-                {
-                    qDebug() << "Matched WhiteList!" << whitelistedDomain.hostname << "to:" << dns.domainString << "wild:" << wild.c_str() << "tame:" << tame.c_str();
-                    whitelisted = true;
-                    //It's whitelist mode and in the whitelist, so it should return a real IP! Unless you've manually specified an IP
-                    if(whitelistedDomain.ip != 0)
-                        customIP = whitelistedDomain.ip;
-                    break;
-                }
+                qDebug() << "Matched WhiteList!" << whiteListed->hostname << "to:" << dns.domainString;
+                //It's whitelist mode and in the whitelist, so it should return a real IP! Unless you've manually specified an IP
+                if(whiteListed->ip != 0)
+                    customIP = whiteListed->ip;
             }
-            shouldCacheDomain = whitelisted;
+            shouldCacheDomain = (whiteListed != nullptr);
         }
         else
         {
-            bool notblacklisted = true;
-            for(ListEntry &blacklistedDomain : blacklist)
+            ListEntry *blackListed = getListEntry(domain, TYPE_BLACKLIST);
+            if(blackListed)
             {
-                std::string wild = blacklistedDomain.hostname.toUtf8().data();
-                if(GeneralTextCompare((char*)tame.c_str(), (char*)wild.c_str()))
-                {
-                    qDebug() << "Matched BlackList!" << blacklistedDomain.hostname << "to:" << dns.domainString << "wild:" << wild.c_str() << "tame:" << tame.c_str();
-                    notblacklisted = false;
-                    //It's blacklist mode and in the blacklist, so it should return your custom IP! And your manually specified one if you did specify a particular one
-                    if(blacklistedDomain.ip != 0)
-                        customIP = blacklistedDomain.ip;
-                    break;
-                }
+                qDebug() << "Matched BlackList!" << blackListed->hostname << "to:" << dns.domainString;
+                //It's blacklist mode and in the blacklist, so it should return your custom IP! And your manually specified one if you did specify a particular one
+                if(blackListed->ip != 0)
+                    customIP = blackListed->ip;
             }
-            shouldCacheDomain = notblacklisted;
+            shouldCacheDomain = (blackListed == nullptr);
         }
         if(shouldCacheDomain)
-            shouldCacheDomain = dns.domainString.contains(".");
+        {
+            //Trying to exclude local hostnames from leaking
+            shouldCacheDomain = (dns.domainString.contains(".") && !dns.domainString.endsWith("in-addr.arpa") && !dns.domainString.endsWith(".lan"));
+        }
 
         //Rewritten and shortened
         if(!shouldCacheDomain || initialMode)
@@ -251,6 +240,33 @@ void SmallDNSServer::processLookups()
     }
 }
 
+ListEntry* SmallDNSServer::getListEntry(const std::string &tame, int listType)
+{
+    if(listType == TYPE_WHITELIST)
+    {
+        for(ListEntry &whiteListed : whitelist)
+        {
+            std::string wild = whiteListed.hostname.toUtf8().data();
+            if(GeneralTextCompare((char*)tame.c_str(), (char*)wild.c_str()))
+            {
+                return &whiteListed;
+            }
+        }
+    }
+    else if(listType == TYPE_BLACKLIST)
+    {
+        for(ListEntry &blackListed : blacklist)
+        {
+            std::string wild = blackListed.hostname.toUtf8().data();
+            if(GeneralTextCompare((char*)tame.c_str(), (char*)wild.c_str()))
+            {
+                return &blackListed;
+            }
+        }
+    }
+    return nullptr;
+}
+
 DNSInfo* SmallDNSServer::getCachedEntry(const QString &byDomain, quint16 andType)
 {
     size_t cachedSize = cachedDNSResponses.size();
@@ -344,7 +360,7 @@ QString SmallDNSServer::getDomainString(const QByteArray &dnsmessage, DNSInfo &d
     }
     while(len != 0);
 
-    dns.domainString = fullname;
+    dns.domainString = fullname.toLower();
 
     if(ptr < ptr_end)
         dns.question.qtype = qFromBigEndian(*(quint16*)ptr);

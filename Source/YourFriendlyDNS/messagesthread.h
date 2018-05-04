@@ -36,6 +36,7 @@ public:
     static AppData* instance;
     SmallDNSServer *dnsServer;
     SmallHTTPServer *httpServer;
+    quint16 dnsServerPort, httpServerPort;
 
     AppData();
     static AppData* get();

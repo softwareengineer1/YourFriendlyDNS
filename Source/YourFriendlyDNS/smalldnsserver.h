@@ -80,13 +80,13 @@ public:
 
     bool whitelistmode, blockmode_returnlocalhost, initialMode, autoTTL;
     quint32 ipToRespondWith, cachedMinutesValid, dnsTTL;
-    quint16 dnsServerPort, httpServerPort;
     QVector<ListEntry> whitelist,blacklist;
     QVector<QString> realdns;
     QVector<quint32> listeningIPs;
     QUdpSocket serversock;
 
 private:
+    ListEntry* getListEntry(const std::string &tame, int listType);
     DNSInfo* getCachedEntry(const QString &byDomain, quint16 andType);
     bool interpretHeader(const QByteArray &dnsmessage, DNSInfo &dns);
     void parseRequest(const QByteArray &dnsrequest, DNSInfo &dns);

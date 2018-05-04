@@ -31,7 +31,8 @@ void morphRequestIntoARecordResponse(QByteArray &dnsrequest, quint32 responseIP,
         DNS_HEADER *header = (DNS_HEADER*)dnsrequest.data();
 
         header->QUERY_RESPONSE_FLAG = 1; //Change from query to response
-        header->RECURSION_AVAILABLE_FLAG = 1; //Do this to suppress the warning message from dig about recursion being supported, let's say yes.
+        if(header->rd == 1) //Do this so there's not even a warning about about recursion requested but not available, let's say yes if it's requested.
+            header->RECURSION_AVAILABLE_FLAG = 1;
         header->ans_count = qToBigEndian((quint16)1);
         header->rcode = RCODE_NOERROR;
         // DNS Answer
@@ -68,7 +69,8 @@ void morphRequestIntoARecordResponse(QByteArray &dnsrequest, std::vector<quint32
         DNS_HEADER *header = (DNS_HEADER*)dnsrequest.data();
 
         header->QUERY_RESPONSE_FLAG = 1; //Change from query to response
-        header->RECURSION_AVAILABLE_FLAG = 1; //Do this to suppress the warning message from dig about recursion being supported, let's say yes.
+        if(header->rd == 1) //Do this so there's not even a warning about about recursion requested but not available, let's say yes if it's requested.
+            header->RECURSION_AVAILABLE_FLAG = 1;
         header->rcode = RCODE_NOERROR;
         // DNS Answer
         unsigned char QAnswer[] = {

@@ -1,6 +1,13 @@
 # YourFriendlyDNS
 A really awesome multi-platform (lin,win,mac,android) local caching and proxying dns server!
 
+{Version 1.1.9}
+1. Another slight reduction (adding and using getListEntry similar to when I added getCachedEntry)
+2. Fixed multiple cache entries for the same domain if it was requested with changed cases -> (ex. gItHuB.com instead of github.com)
+ ->Despite checking each domain with a case insensitive match with wildcard support I still inserted into the cache and checked against it an a case sensitive way.
+ ->To solve it I changed this one line: “dns.domainString = fullname;” to “dns.domainString = fullname.toLower();” which is upon first interpreting the domain.
+ ->Now if an altered case domain name is given (ex. “ExAMpLE.CoM” it’s always seen as “example.com”, anywhere in the application after it’s first interpreted)
+
 {Version 1.1.8}
 1. Added customizable DNS TTL instead of hardcoded, or auto setting matching your cached entry minutes valid value but in seconds.
 2. More cleanly exiting (freeing up objects created)

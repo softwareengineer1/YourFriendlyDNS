@@ -73,6 +73,11 @@ void SettingsWindow::setRespondingIP(const QString &ip)
     ui->respondingIP->setText(ip);
 }
 
+bool SettingsWindow::getDNSCryptEnabled()
+{
+    return ui->dnscryptEnabled->isChecked();
+}
+
 QString SettingsWindow::getRespondingIP()
 {
     return ui->respondingIP->text();
@@ -86,6 +91,11 @@ QString SettingsWindow::getDNSServerPort()
 QString SettingsWindow::getHTTPServerPort()
 {
     return ui->httpServerPort->text();
+}
+
+void SettingsWindow::setDNSCryptEnabled(bool yes)
+{
+    ui->dnscryptEnabled->setChecked(yes);
 }
 
 void SettingsWindow::setCachedMinutesValid(quint32 minutesValid)
@@ -140,6 +150,8 @@ void SettingsWindow::setAutoTTL(bool autottl)
 void SettingsWindow::setdnsTTL(quint32 dnsttl)
 {
     dnsTTL = dnsttl;
+    ui->dnsTTL->setText(QString("%1").arg(dnsttl));
+    qDebug() << "Specified DNS TTL:" << dnsttl;
     emit settingsUpdated();
 }
 
@@ -256,4 +268,11 @@ void SettingsWindow::on_cacheValidMinutes_textChanged(const QString &arg1)
         }
         emit settingsUpdated();
     }
+}
+
+void SettingsWindow::on_dnscryptEnabled_stateChanged(int arg1)
+{
+    if(arg1)
+        setDNSCryptEnabled(arg1);
+    emit settingsUpdated();
 }

@@ -29,6 +29,7 @@ DNSServerWindow::DNSServerWindow(QWidget *parent) : QMainWindow(parent), ui(new 
 {
     ui->setupUi(this);
     qRegisterMetaType<ListEntry>("ListEntry");
+    qRegisterMetaType<ListEntry>("std::vector<ListEntry>");
 
     settingspath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
     QDir d{settingspath};
@@ -45,6 +46,9 @@ DNSServerWindow::DNSServerWindow(QWidget *parent) : QMainWindow(parent), ui(new 
     connect(settings, SIGNAL(autoCaptureCaptivePortals()), this, SLOT(autoCaptureCaptivePortals()));
     connect(settings, SIGNAL(iptablesUndoAndroid()), this, SLOT(iptablesUndoAndroid()));
     connect(settings->indexhtml, SIGNAL(htmlChanged(QString&)), this, SLOT(htmlChanged(QString&)));
+
+    cacheviewer = new CacheViewer();
+    connect(this, SIGNAL(displayCache(const std::vector<DNSInfo>&)), cacheviewer, SLOT(displayCache(const std::vector<DNSInfo>&)));
 
     preloadServerPorts();
 
@@ -77,6 +81,7 @@ void DNSServerWindow::serversInitialized()
     httpServer = AppData::get()->httpServer;
     connect(server, SIGNAL(queryRespondedTo(ListEntry)), this, SLOT(queryRespondedTo(ListEntry)));
     connect(settings, SIGNAL(clearDNSCache()), server, SLOT(clearDNSCache()));
+    connect(cacheviewer, &CacheViewer::deleteEntriesFromCache, server, &SmallDNSServer::deleteEntriesFromCache);
 
     listeningIPsUpdate();
     settingsLoad();
@@ -137,6 +142,7 @@ void DNSServerWindow::settingsUpdated()
 {
     if(server && settings)
     {
+        server->dnscryptEnabled = settings->getDNSCryptEnabled();
         server->blockmode_returnlocalhost = settings->blockmode_localhost;
         server->ipToRespondWith = QHostAddress(settings->getRespondingIP()).toIPv4Address();
         server->cachedMinutesValid = settings->getCachedMinutesValid();
@@ -283,7 +289,9 @@ bool DNSServerWindow::settingsSave()
     if(file.open(QFile::WriteOnly))
     {
         QJsonObject json;
-        json["version"] = "1.1.7";
+        json["version"] = "2.0";
+        server->dnscryptEnabled = settings->getDNSCryptEnabled();
+        json["dnscryptEnabled"] = server->dnscryptEnabled;
         json["initialMode"] = server->initialMode;
         json["whitelistmode"] = server->whitelistmode;
         json["blockmode_returnlocalhost"] = server->blockmode_returnlocalhost;
@@ -375,6 +383,11 @@ bool DNSServerWindow::settingsLoad()
 
     QJsonObject json = QJsonDocument::fromJson(file.readAll()).object();
 
+    if(json.contains("dnscryptEnabled") && json["dnscryptEnabled"].isBool())
+    {
+        server->dnscryptEnabled = json["dnscryptEnabled"].toBool();
+        settings->setDNSCryptEnabled(server->dnscryptEnabled);
+    }
     if(json.contains("initialMode") && json["initialMode"].isBool())
     {
         server->initialMode = json["initialMode"].toBool();
@@ -495,6 +508,13 @@ bool DNSServerWindow::settingsLoad()
     if(json.contains("version") && json["version"].isString())
     {
         version = json["version"].toString();
+        if(version != "2.0")
+        {
+            //Enabling encryption by default!
+            server->realdns.append("sdns://AQAAAAAAAAAADjIwOC42Ny4yMjAuMjIwILc1EUAgbyJdPivYItf9aR6hwzzI1maNDL4Ev6vKQ_t5GzIuZG5zY3J5cHQtY2VydC5vcGVuZG5zLmNvbQ");
+            server->dnscryptEnabled = true;
+            settings->setDNSCryptEnabled();
+        }
     }
     else
     {
@@ -609,4 +629,10 @@ void DNSServerWindow::on_secondAddButton_clicked()
 void DNSServerWindow::on_settingsButton_clicked()
 {
     settings->show();
+}
+
+void DNSServerWindow::on_cacheViewButton_clicked()
+{
+    emit displayCache(server->cachedDNSResponses);
+    cacheviewer->show();
 }

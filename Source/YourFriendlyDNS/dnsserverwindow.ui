@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>861</width>
+    <width>893</width>
     <height>608</height>
    </rect>
   </property>
@@ -298,6 +298,18 @@
       </property>
       <property name="text">
        <string>Save</string>
+      </property>
+     </widget>
+    </item>
+    <item row="8" column="7">
+     <widget class="QPushButton" name="cacheViewButton">
+      <property name="font">
+       <font>
+        <pointsize>8</pointsize>
+       </font>
+      </property>
+      <property name="text">
+       <string>Cache Viewer</string>
       </property>
      </widget>
     </item>

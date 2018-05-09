@@ -35,6 +35,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include <QProcess>
 #include "androidsuop.h"
 #include "initialresponse.h"
+#include "dnscrypt.h" //YES YES YES! :)
 
 /* YourFriendlyDNS - A really awesome multi-platform (lin,win,mac,android) local caching and proxying dns server!
 Copyright (C) 2018  softwareengineer1 @ github.com/softwareengineer1
@@ -78,23 +79,26 @@ public:
     bool startServer(QHostAddress address = QHostAddress::AnyIPv4, quint16 port = 53, bool reuse = false);
     QString getDomainString(const QByteArray &dnsmessage, DNSInfo &dns);
 
-    bool whitelistmode, blockmode_returnlocalhost, initialMode, autoTTL;
+    bool whitelistmode, blockmode_returnlocalhost, initialMode, autoTTL, dnscryptEnabled;
     quint32 ipToRespondWith, cachedMinutesValid, dnsTTL;
     QVector<ListEntry> whitelist,blacklist;
     QVector<QString> realdns;
     QVector<quint32> listeningIPs;
+    std::vector<DNSInfo> cachedDNSResponses;
     QUdpSocket serversock;
 
 private:
     ListEntry* getListEntry(const std::string &tame, int listType);
     DNSInfo* getCachedEntry(const QString &byDomain, quint16 andType);
+    void parseAndRespond(QByteArray &datagram, DNSInfo &dns);
     bool interpretHeader(const QByteArray &dnsmessage, DNSInfo &dns);
     void parseRequest(const QByteArray &dnsrequest, DNSInfo &dns);
     void parseResponse(const QByteArray &dnsresponse, DNSInfo &dns);
     void getHostAddresses(const QByteArray &dnsresponse, DNSInfo &dns);
     QHostAddress selectRandomDNSServer();
+    QString selectRandomDNSCryptServer();
     QUdpSocket clientsock;
-    std::vector<DNSInfo> cachedDNSResponses;
+    DNSCrypt dnscrypt;
 
 signals:
     void queryRespondedTo(ListEntry responded);
@@ -102,6 +106,8 @@ signals:
 
 public slots:
     void clearDNSCache();
+    void deleteEntriesFromCache(std::vector<ListEntry> entries);
+    void decryptedLookupDoneSendResponseNow(QByteArray decryptedResponse, DNSInfo &dns);
 
 private slots:
     void processDNSRequests();

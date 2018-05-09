@@ -9,6 +9,7 @@
 #include <QDir>
 #include <QStandardPaths>
 #include "settingswindow.h"
+#include "cacheviewer.h"
 #include "messagesthread.h"
 
 /* YourFriendlyDNS - A really awesome multi-platform (lin,win,mac,android) local caching and proxying dns server!
@@ -47,6 +48,9 @@ public:
     explicit DNSServerWindow(QWidget *parent = 0);
     ~DNSServerWindow();
 
+signals:
+    void displayCache(const std::vector<DNSInfo> &cache);
+
 public slots:
     void serversInitialized();
     void androidInit();
@@ -69,10 +73,13 @@ private slots:
     void on_secondAddButton_clicked();
     void on_settingsButton_clicked();
 
+    void on_cacheViewButton_clicked();
+
 private:
     Ui::DNSServerWindow *ui;
     MessagesThread *messagesThread;
     SettingsWindow *settings;
+    CacheViewer *cacheviewer;
     SmallDNSServer *server;
     SmallHTTPServer *httpServer;
     QString settingspath, html, version;

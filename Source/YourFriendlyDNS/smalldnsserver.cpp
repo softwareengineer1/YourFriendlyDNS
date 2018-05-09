@@ -30,6 +30,7 @@ SmallDNSServer::SmallDNSServer(QObject *parent)
     ipToRespondWith = QHostAddress("127.0.0.1").toIPv4Address();
     cachedMinutesValid = 7;
     dnsTTL = 25200;
+    dnscryptEnabled = true; //Encryption now enabled by default (and there's no fallback to plaintext dns either for security, you have to manually disable it to use regular dns again)
 
     whitelistmode = initialMode = blockmode_returnlocalhost = true;
     //default is whitelist mode, with just these three entries to get you started!
@@ -60,6 +61,7 @@ SmallDNSServer::SmallDNSServer(QObject *parent)
 
     connect(&serversock, &QUdpSocket::readyRead, this, &SmallDNSServer::processDNSRequests);
     connect(&clientsock, &QUdpSocket::readyRead, this, &SmallDNSServer::processLookups);
+    connect(&dnscrypt, &DNSCrypt::decryptedLookupDoneSendResponseNow, this, &SmallDNSServer::decryptedLookupDoneSendResponseNow);
 }
 
 bool SmallDNSServer::startServer(QHostAddress address, quint16 port, bool reuse)
@@ -73,15 +75,76 @@ void SmallDNSServer::clearDNSCache()
     qDebug() << "Local DNS cache cleared!";
 }
 
+void SmallDNSServer::deleteEntriesFromCache(std::vector<ListEntry> entries)
+{
+    std::vector<size_t> deleteme;
+    size_t cachedSize = cachedDNSResponses.size();
+    size_t deletionSize = entries.size();
+    qDebug() << "cached:" << cachedSize << "deletion:" << deletionSize;
+    for(size_t i = 0; i < cachedSize; i++)
+    {
+        qDebug() << "i:" << i;
+        for(size_t x = 0; x < deletionSize; x++)
+        {
+            qDebug() << "Deleting:" << x << entries[x].hostname << entries[x].ip;
+            if(cachedDNSResponses[i].domainString == entries[x].hostname && cachedDNSResponses[i].question.qtype == entries[x].ip)
+            {
+                deleteme.push_back(i);
+            }
+        }
+    }
+    for(size_t i : deleteme)
+    {
+        cachedDNSResponses.erase(cachedDNSResponses.begin()+i);
+    }
+}
+
 QHostAddress SmallDNSServer::selectRandomDNSServer()
 {
     if(realdns.isEmpty())
     {
+        realdns.append("sdns://AQAAAAAAAAAADjIwOC42Ny4yMjAuMjIwILc1EUAgbyJdPivYItf9aR6hwzzI1maNDL4Ev6vKQ_t5GzIuZG5zY3J5cHQtY2VydC5vcGVuZG5zLmNvbQ");
         realdns.append("208.67.222.222");
         realdns.append("208.67.220.220");
     }
 
-    return QHostAddress(realdns[QRandomGenerator::global()->bounded(realdns.size())]);
+    for(int x = 0; ; x++)
+    {
+        QString randomServer = realdns[QRandomGenerator::global()->bounded(realdns.size())];
+
+        if(!randomServer.contains("sdns://"))
+            return QHostAddress(randomServer);
+
+        if(x > 10000)
+            break;
+    }
+
+    return QHostAddress();
+}
+
+QString SmallDNSServer::selectRandomDNSCryptServer()
+{
+    if(realdns.isEmpty())
+    {
+        realdns.append("sdns://AQAAAAAAAAAADjIwOC42Ny4yMjAuMjIwILc1EUAgbyJdPivYItf9aR6hwzzI1maNDL4Ev6vKQ_t5GzIuZG5zY3J5cHQtY2VydC5vcGVuZG5zLmNvbQ");
+        realdns.append("208.67.222.222");
+        realdns.append("208.67.220.220");
+    }
+
+    for(int x = 0; ; x++)
+    {
+        QString randomServer = realdns[QRandomGenerator::global()->bounded(realdns.size())];
+
+        if(randomServer.contains("sdns://"))
+        {
+            qDebug() << "Selected:" << randomServer;
+            return randomServer;
+        }
+
+        if(x > 100000)
+            break;
+    }
+    return "";
 }
 
 void SmallDNSServer::processDNSRequests()
@@ -155,16 +218,29 @@ void SmallDNSServer::processDNSRequests()
                 qDebug() << "Caching this domain->" << dns.domainString;
                 if(cached) //If cached, update the expiry now, even though we're about to update it again in a moment
                     cached->expiry = QDateTime::currentDateTime().addSecs(cachedMinutesValid * 60);
+
                 //Here's where we forward the received request to a real dns server, if not cached yet or its time to update the cache for this domain
                 //Only executes if the domain is whitelisted or not blacklisted (depending on which mode you're using)
-                qDebug() << "Making DNS request type:" << dns.question.qtype << "for domain:" << dns.domainString << "request id:" << dns.header.id << "datagram:" << datagram;
-                clientsock.writeDatagram(datagram, selectRandomDNSServer(), 53);
 
                 dns.sender = sender;
                 dns.senderPort = senderPort;
                 dns.ttl = dnsTTL;
+
+                if(dnscryptEnabled)
+                {
+                    dnscrypt.setProvider(selectRandomDNSCryptServer());
+                    qDebug() << "Making encrypted DNS request type:" << dns.question.qtype << "for domain:" << dns.domainString << "request id:" << dns.header.id << "datagram:" << datagram;
+                    dnscrypt.makeEncryptedRequest(dns);
+                }
+                else
+                {
+                    qDebug() << "Making DNS request type:" << dns.question.qtype << "for domain:" << dns.domainString << "request id:" << dns.header.id << "datagram:" << datagram;
+                    clientsock.writeDatagram(datagram, selectRandomDNSServer(), 53);
+                }
+
                 InitialResponse *ir = new InitialResponse(dns);
-                connect(this, &SmallDNSServer::lookupDoneSendResponseNow, ir, &InitialResponse::lookupDoneSendResponseNow);
+                if(ir)
+                    connect(this, &SmallDNSServer::lookupDoneSendResponseNow, ir, &InitialResponse::lookupDoneSendResponseNow);
             }
             else if(cached)
             {
@@ -188,6 +264,53 @@ void SmallDNSServer::processDNSRequests()
     }
 }
 
+void SmallDNSServer::parseAndRespond(QByteArray &datagram, DNSInfo &dns)
+{
+    parseResponse(datagram, dns);
+
+    if(dns.isValid && dns.isResponse)
+    {
+        if(!dns.hasIPs && dns.question.qtype == DNS_TYPE_A)
+        {
+            if(dns.header.rcode == RCODE_NXDOMAIN || dns.header.rcode == RCODE_YXDOMAIN || dns.header.rcode == RCODE_XRRSET)
+            {
+                qDebug() << "For:" << dns.domainString << "NXDOMAIN (Non eXistent domain) or similar response code received, redirecting immediately to custom ip!";
+                dns.ipaddresses.push_back(ipToRespondWith);
+                dns.hasIPs = true;
+                emit lookupDoneSendResponseNow(dns, &serversock);
+            }
+        }
+        else
+        {
+            emit lookupDoneSendResponseNow(dns, &serversock);
+        }
+
+        DNSInfo *cached = getCachedEntry(dns.domainString, dns.question.qtype);
+        if(cached)
+        {
+            //Update the cached entry
+            dns.expiry = QDateTime::currentDateTime().addSecs(cachedMinutesValid * 60);
+            *cached = dns;
+            qDebug() << "Updated cache of record type:" << dns.question.qtype << "for domain:" << dns.domainString << "with new expiry:" << dns.expiry;
+        }
+        else
+        {
+            //Or create the cache entry initially
+            dns.expiry = QDateTime::currentDateTime().addSecs(cachedMinutesValid * 60);
+            cachedDNSResponses.push_back(dns);
+        }
+
+        if(dns.hasIPs && dns.question.qtype == DNS_TYPE_A)
+            emit queryRespondedTo(ListEntry(dns.domainString, dns.ipaddresses[0]));
+
+    }
+}
+
+void SmallDNSServer::decryptedLookupDoneSendResponseNow(QByteArray decryptedResponse, DNSInfo &dns)
+{
+    parseAndRespond(decryptedResponse, dns);
+}
+
 void SmallDNSServer::processLookups()
 {
     QByteArray datagram;
@@ -199,44 +322,7 @@ void SmallDNSServer::processLookups()
     {
         datagram.resize(clientsock.pendingDatagramSize());
         clientsock.readDatagram(datagram.data(), datagram.size(), &sender, &senderPort);
-        parseResponse(datagram, dns);
-
-        if(dns.isValid && dns.isResponse)
-        {
-            if(!dns.hasIPs && dns.question.qtype == DNS_TYPE_A)
-            {
-                if(dns.header.rcode == RCODE_NXDOMAIN || dns.header.rcode == RCODE_YXDOMAIN || dns.header.rcode == RCODE_XRRSET)
-                {
-                    qDebug() << "For:" << dns.domainString << "NXDOMAIN (Non eXistent domain) or similar response code received, redirecting immediately to custom ip!";
-                    dns.ipaddresses.push_back(ipToRespondWith);
-                    dns.hasIPs = true;
-                    emit lookupDoneSendResponseNow(dns, &serversock);
-                }
-            }
-            else
-            {
-                emit lookupDoneSendResponseNow(dns, &serversock);
-            }
-
-            DNSInfo *cached = getCachedEntry(dns.domainString, dns.question.qtype);
-            if(cached)
-            {
-                //Update the cached entry
-                dns.expiry = QDateTime::currentDateTime().addSecs(cachedMinutesValid * 60);
-                *cached = dns;
-                qDebug() << "Updated cache of record type:" << dns.question.qtype << "for domain:" << dns.domainString << "with new expiry:" << dns.expiry;
-            }
-            else
-            {
-                //Or create the cache entry initially
-                dns.expiry = QDateTime::currentDateTime().addSecs(cachedMinutesValid * 60);
-                cachedDNSResponses.push_back(dns);
-            }
-
-            if(dns.hasIPs && dns.question.qtype == DNS_TYPE_A)
-                emit queryRespondedTo(ListEntry(dns.domainString, dns.ipaddresses[0]));
-
-        }
+        parseAndRespond(datagram, dns);
     }
 }
 

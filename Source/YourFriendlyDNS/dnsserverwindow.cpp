@@ -143,6 +143,7 @@ void DNSServerWindow::settingsUpdated()
     if(server && settings)
     {
         server->dnscryptEnabled = settings->getDNSCryptEnabled();
+        ui->encEnabled->setVisible(server->dnscryptEnabled);
         server->blockmode_returnlocalhost = settings->blockmode_localhost;
         server->ipToRespondWith = QHostAddress(settings->getRespondingIP()).toIPv4Address();
         server->cachedMinutesValid = settings->getCachedMinutesValid();

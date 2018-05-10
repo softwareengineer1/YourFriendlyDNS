@@ -11,11 +11,29 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Your Friendly DNS</string>
+   <string>Your Friendly DNS 2.0</string>
   </property>
   <widget class="QWidget" name="centralWidget">
    <layout class="QGridLayout" name="gridLayout">
-    <item row="8" column="3">
+    <item row="10" column="0" colspan="2">
+     <widget class="QLabel" name="hostnameLabel">
+      <property name="text">
+       <string>Hostname to add:</string>
+      </property>
+     </widget>
+    </item>
+    <item row="14" column="4">
+     <widget class="QCommandLinkButton" name="removeButton">
+      <property name="text">
+       <string/>
+      </property>
+      <property name="icon">
+       <iconset resource="images.qrc">
+        <normaloff>:/images/minus.png</normaloff>:/images/minus.png</iconset>
+      </property>
+     </widget>
+    </item>
+    <item row="9" column="3">
      <widget class="QRadioButton" name="blacklistButton">
       <property name="minimumSize">
        <size>
@@ -33,7 +51,44 @@
       </property>
      </widget>
     </item>
-    <item row="12" column="0" colspan="8">
+    <item row="0" column="1" colspan="2">
+     <widget class="QLabel" name="listeningIPs">
+      <property name="text">
+       <string>Listening IPs: 0.0.0.0</string>
+      </property>
+      <property name="alignment">
+       <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+      </property>
+      <property name="wordWrap">
+       <bool>true</bool>
+      </property>
+      <property name="textInteractionFlags">
+       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+      </property>
+     </widget>
+    </item>
+    <item row="2" column="0" colspan="6">
+     <widget class="QLabel" name="label_7">
+      <property name="text">
+       <string>Engineered by: softwareengineer1 @ github.com/softwareengineer1 Thanks for your support!</string>
+      </property>
+     </widget>
+    </item>
+    <item row="12" column="0" colspan="3">
+     <widget class="QLineEdit" name="hostnameEdit"/>
+    </item>
+    <item row="7" column="7">
+     <widget class="QCommandLinkButton" name="settingsButton">
+      <property name="text">
+       <string/>
+      </property>
+      <property name="icon">
+       <iconset resource="images.qrc">
+        <normaloff>:/images/gear.gif</normaloff>:/images/gear.gif</iconset>
+      </property>
+     </widget>
+    </item>
+    <item row="13" column="0" colspan="8">
      <widget class="QTreeWidget" name="dnslist">
       <property name="editTriggers">
        <set>QAbstractItemView::NoEditTriggers</set>
@@ -65,7 +120,74 @@
       </column>
      </widget>
     </item>
-    <item row="14" column="0" colspan="8">
+    <item row="7" column="0" colspan="5">
+     <widget class="QCheckBox" name="initialMode">
+      <property name="font">
+       <font>
+        <pointsize>8</pointsize>
+       </font>
+      </property>
+      <property name="text">
+       <string>Initial Mode/Safe Mode (Block everything, so you can setup your whitelist/blacklist safely)</string>
+      </property>
+      <property name="checked">
+       <bool>true</bool>
+      </property>
+     </widget>
+    </item>
+    <item row="0" column="0">
+     <widget class="QLabel" name="label_5">
+      <property name="text">
+       <string/>
+      </property>
+      <property name="pixmap">
+       <pixmap resource="images.qrc">:/images/newBCHaddr_small.png</pixmap>
+      </property>
+     </widget>
+    </item>
+    <item row="9" column="7">
+     <widget class="QPushButton" name="cacheViewButton">
+      <property name="font">
+       <font>
+        <pointsize>8</pointsize>
+       </font>
+      </property>
+      <property name="text">
+       <string>Cache Viewer</string>
+      </property>
+     </widget>
+    </item>
+    <item row="3" column="6" colspan="2">
+     <widget class="QLabel" name="label_2">
+      <property name="font">
+       <font>
+        <pointsize>8</pointsize>
+       </font>
+      </property>
+      <property name="text">
+       <string>BTC: 1279WngWQUTV56UcTvzVAnNdR3Z7qb6R8j</string>
+      </property>
+      <property name="textInteractionFlags">
+       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+      </property>
+     </widget>
+    </item>
+    <item row="3" column="0" colspan="4">
+     <widget class="QLabel" name="label_4">
+      <property name="font">
+       <font>
+        <pointsize>8</pointsize>
+       </font>
+      </property>
+      <property name="text">
+       <string>BCH: bitcoincash:qzh3knl0xeyrzrxm5paenewsmkm8r4t76glzxmzpqs</string>
+      </property>
+      <property name="textInteractionFlags">
+       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+      </property>
+     </widget>
+    </item>
+    <item row="15" column="0" colspan="8">
      <widget class="QTreeWidget" name="dnsqueries">
       <property name="editTriggers">
        <set>QAbstractItemView::NoEditTriggers</set>
@@ -97,20 +219,20 @@
       </column>
      </widget>
     </item>
-    <item row="2" column="6" colspan="2">
-     <widget class="QLabel" name="label_2">
+    <item row="7" column="6">
+     <widget class="QPushButton" name="saveButton">
       <property name="font">
        <font>
         <pointsize>8</pointsize>
        </font>
       </property>
       <property name="text">
-       <string>BTC: 1279WngWQUTV56UcTvzVAnNdR3Z7qb6R8j</string>
-      </property>
-      <property name="textInteractionFlags">
-       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+       <string>Save</string>
       </property>
      </widget>
+    </item>
+    <item row="12" column="3" colspan="3">
+     <widget class="QLineEdit" name="ipEdit"/>
     </item>
     <item row="0" column="7">
      <widget class="QLabel" name="label_3">
@@ -131,123 +253,14 @@
       </property>
      </widget>
     </item>
-    <item row="2" column="0" colspan="4">
-     <widget class="QLabel" name="label_4">
-      <property name="font">
-       <font>
-        <pointsize>8</pointsize>
-       </font>
-      </property>
-      <property name="text">
-       <string>BCH: bitcoincash:qzh3knl0xeyrzrxm5paenewsmkm8r4t76glzxmzpqs</string>
-      </property>
-      <property name="textInteractionFlags">
-       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-      </property>
-     </widget>
-    </item>
-    <item row="0" column="0">
-     <widget class="QLabel" name="label_5">
-      <property name="text">
-       <string/>
-      </property>
-      <property name="pixmap">
-       <pixmap resource="images.qrc">:/images/newBCHaddr_small.png</pixmap>
-      </property>
-     </widget>
-    </item>
-    <item row="11" column="3" colspan="3">
-     <widget class="QLineEdit" name="ipEdit"/>
-    </item>
-    <item row="11" column="0" colspan="3">
-     <widget class="QLineEdit" name="hostnameEdit"/>
-    </item>
-    <item row="9" column="0" colspan="2">
-     <widget class="QLabel" name="hostnameLabel">
-      <property name="text">
-       <string>Hostname to add:</string>
-      </property>
-     </widget>
-    </item>
-    <item row="6" column="0" colspan="5">
-     <widget class="QCheckBox" name="initialMode">
-      <property name="font">
-       <font>
-        <pointsize>8</pointsize>
-       </font>
-      </property>
-      <property name="text">
-       <string>Initial Mode/Safe Mode (Block everything, so you can setup your whitelist/blacklist safely)</string>
-      </property>
-      <property name="checked">
-       <bool>true</bool>
-      </property>
-     </widget>
-    </item>
-    <item row="0" column="1" colspan="2">
-     <widget class="QLabel" name="listeningIPs">
-      <property name="text">
-       <string>Listening IPs: 0.0.0.0</string>
-      </property>
-      <property name="alignment">
-       <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
-      </property>
-      <property name="wordWrap">
-       <bool>true</bool>
-      </property>
-      <property name="textInteractionFlags">
-       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-      </property>
-     </widget>
-    </item>
-    <item row="9" column="3" colspan="5">
+    <item row="10" column="3" colspan="5">
      <widget class="QLabel" name="label">
       <property name="text">
        <string>IP: (Leave blank unless mapping custom IPs)</string>
       </property>
      </widget>
     </item>
-    <item row="1" column="0" colspan="6">
-     <widget class="QLabel" name="label_7">
-      <property name="text">
-       <string>Engineered by: softwareengineer1 @ github.com/softwareengineer1 Thanks for your support!</string>
-      </property>
-     </widget>
-    </item>
-    <item row="13" column="4">
-     <widget class="QCommandLinkButton" name="removeButton">
-      <property name="text">
-       <string/>
-      </property>
-      <property name="icon">
-       <iconset resource="images.qrc">
-        <normaloff>:/images/minus.png</normaloff>:/images/minus.png</iconset>
-      </property>
-     </widget>
-    </item>
-    <item row="11" column="6" colspan="2">
-     <widget class="QCommandLinkButton" name="firstAddButton">
-      <property name="text">
-       <string/>
-      </property>
-      <property name="icon">
-       <iconset resource="images.qrc">
-        <normaloff>:/images/plus.png</normaloff>:/images/plus.png</iconset>
-      </property>
-     </widget>
-    </item>
-    <item row="13" column="3">
-     <widget class="QCommandLinkButton" name="secondAddButton">
-      <property name="text">
-       <string/>
-      </property>
-      <property name="icon">
-       <iconset resource="images.qrc">
-        <normaloff>:/images/plus.png</normaloff>:/images/plus.png</iconset>
-      </property>
-     </widget>
-    </item>
-    <item row="8" column="0" colspan="2">
+    <item row="9" column="0" colspan="2">
      <widget class="QRadioButton" name="whitelistButton">
       <property name="minimumSize">
        <size>
@@ -278,38 +291,32 @@
       </property>
      </widget>
     </item>
-    <item row="6" column="7">
-     <widget class="QCommandLinkButton" name="settingsButton">
+    <item row="14" column="3">
+     <widget class="QCommandLinkButton" name="secondAddButton">
       <property name="text">
        <string/>
       </property>
       <property name="icon">
        <iconset resource="images.qrc">
-        <normaloff>:/images/gear.gif</normaloff>:/images/gear.gif</iconset>
+        <normaloff>:/images/plus.png</normaloff>:/images/plus.png</iconset>
       </property>
      </widget>
     </item>
-    <item row="6" column="6">
-     <widget class="QPushButton" name="saveButton">
-      <property name="font">
-       <font>
-        <pointsize>8</pointsize>
-       </font>
-      </property>
+    <item row="12" column="6" colspan="2">
+     <widget class="QCommandLinkButton" name="firstAddButton">
       <property name="text">
-       <string>Save</string>
+       <string/>
+      </property>
+      <property name="icon">
+       <iconset resource="images.qrc">
+        <normaloff>:/images/plus.png</normaloff>:/images/plus.png</iconset>
       </property>
      </widget>
     </item>
-    <item row="8" column="7">
-     <widget class="QPushButton" name="cacheViewButton">
-      <property name="font">
-       <font>
-        <pointsize>8</pointsize>
-       </font>
-      </property>
+    <item row="0" column="5" colspan="2">
+     <widget class="QLabel" name="encEnabled">
       <property name="text">
-       <string>Cache Viewer</string>
+       <string>DNSCRYPT ENCRYPTION ENABLED! :)</string>
       </property>
      </widget>
     </item>

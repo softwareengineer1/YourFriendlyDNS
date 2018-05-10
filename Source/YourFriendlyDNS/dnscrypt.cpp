@@ -178,7 +178,6 @@ void DNSCrypt::validateCertificates()
         else if(bincert.version_major == 2)
         {
             qDebug() << "Verifying XChacha20 cert";
-            //TODO
             continue;
         }
         else
@@ -313,14 +312,11 @@ void EncryptedResponse::getAndDecryptResponseTCP()
     quint16 prependedPacketLen = qFromBigEndian(*(quint16*)packet.data());
     packet.remove(0, 2);
 
-    qDebug() << "Prepended packet len:" << prependedPacketLen;
-
     memcpy(&responseHeader, packet.data(), sizeof responseHeader);
     packet.remove(0, sizeof responseHeader);
     prependedPacketLen -= sizeof responseHeader;
 
-    qDebug() << "What's left size:" << packet.size() << "data:" << packet;
-    qDebug() << "Prepended packet len now:" << prependedPacketLen;
+    qDebug() << "Encrypted message size:" << packet.size() << "data:" << packet;
 
     if(memcmp(&responseHeader.ServerMagic, DNSCRYPT_MAGIC_RESPONSE, sizeof responseHeader.ServerMagic) == 0)
     {
@@ -377,7 +373,7 @@ void EncryptedResponse::getAndDecryptResponse()
             if(dnsh->tc == 1)
             {
                 qDebug() << "TCFlag set, it wants us to use TCP! Switching now for provider:" << providerName;
-                emit switchToTCP();
+                emit switchToTCP(respondTo, encRequest, bincertFields, providerName, nonce, sk);
                 return endResponse();
             }
         }
@@ -423,9 +419,10 @@ CertificateResponse::CertificateResponse(DNSInfo &dns, QString providername, QOb
     respondTo = dns;
     respondTo.req = dns.req;
     providerName = providername;
-    usingTCP = true;
+    usingTCP = false;
     newKeyPerRequest = false;
     crypto_box_keypair(pk, sk);
+    qDebug() << "Aquired new certificate for provider:" << providername;
 }
 
 void CertificateResponse::addPadding(QByteArray &msg)
@@ -448,11 +445,29 @@ void CertificateResponse::addPadding(QByteArray &msg)
     }
 }
 
+void CertificateResponse::switchToTCP(DNSInfo &dns, QByteArray encryptedRequest, SignedBincertFields signedBincertFields, QString providername, quint8 *nonce, quint8 *sk)
+{
+    usingTCP = true;
+    quint16 prependedPacketLen = encryptedRequest.size();
+    prependedPacketLen = qToBigEndian(prependedPacketLen);
+    encryptedRequest.prepend((const char*)&prependedPacketLen, 2);
+
+    EncryptedResponse *er2 = new EncryptedResponse(dns, encryptedRequest, signedBincertFields, providername, nonce, sk);
+    if(er2)
+    {
+        connect(er2, &EncryptedResponse::decryptedLookupDoneSendResponseNow, this, &CertificateResponse::decryptedLookupDoneSendResponseNow);
+        er2->tcp.connectToHost(currentServer, currentPort);
+    }
+}
+
 void CertificateResponse::certificateVerifiedDoEncryptedLookup(SignedBincertFields bincertFields, QHostAddress serverAddress, quint16 serverPort, DNSInfo dns)
 {
     dnsCryptQueryHeader queryHeader;
     QByteArray unencryptedRequest, encryptedRequest;
     quint8 nonce[crypto_box_NONCEBYTES] = {0};
+
+    currentServer = serverAddress;
+    currentPort = serverPort;
 
     if(newKeyPerRequest)
         crypto_box_keypair(pk, sk);
@@ -493,17 +508,16 @@ void CertificateResponse::certificateVerifiedDoEncryptedLookup(SignedBincertFiel
     }
 
     qDebug() << "Request after encryption:" << encryptedRequest << "size:" << encryptedRequest.size() << "encryptedSize:" << encryptedSize;
-    serverPort = 53;
     qDebug() << "Sending to server:" << serverAddress << serverPort;
 
     EncryptedResponse *er = new EncryptedResponse(dns, encryptedRequest, bincertFields, providerName, nonce, sk);
     if(er)
     {
-        connect(er, &EncryptedResponse::switchToTCP, this, [&] { usingTCP = true; });
+        connect(er, &EncryptedResponse::switchToTCP, this, &CertificateResponse::switchToTCP, Qt::DirectConnection);
         connect(er, &EncryptedResponse::decryptedLookupDoneSendResponseNow, this, &CertificateResponse::decryptedLookupDoneSendResponseNow);
+
         if(usingTCP)
         {
-            serverPort = 443;
             er->tcp.connectToHost(serverAddress, serverPort);
         }
         else

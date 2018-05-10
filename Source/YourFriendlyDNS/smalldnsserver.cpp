@@ -115,7 +115,7 @@ QHostAddress SmallDNSServer::selectRandomDNSServer()
         if(!randomServer.contains("sdns://"))
             return QHostAddress(randomServer);
 
-        if(x > 10000)
+        if(x > 100000)
             break;
     }
 

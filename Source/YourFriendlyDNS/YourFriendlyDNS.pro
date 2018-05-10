@@ -28,9 +28,27 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 DEFINES += SODIUM_STATIC
 INCLUDEPATH += libsodium/include
-#You must compile libsodium (version 1.0.16 is what I used) and place compiled library somewhere and point the below -L to that path
-#Also copy the libsodium folder once built to this project's directory
-LIBS += -L ~/Qt/Projects2018/YourFriendlyDNS-2.0 -lsodium
+#You must compile libsodium (version 1.0.16 is what I used) and place compiled library in the project directory for simplicity.
+#The 'libsodium' folder, or on Android-armeabi-v7a the 'libsodium-android-armv7-a' folder, or on Android-x86 the 'libsodium-android-i686' directory.
+
+#Uncomment next line when building for Linux/Mac/Windows, and for building for Android comment it
+#LIBS += -L $$PWD/libsodium -lsodium
+
+contains(ANDROID_TARGET_ARCH,armeabi-v7a) {
+    #When building for Android-armv7: Change path to match where you copied the compiled libsodium to if not the project directory
+    #Also under from Qt Gui Projects->Build & Run->Android-armeabi-v7a->Build Android APK->Additional Libraries [Add it to there as well so it'll be bundled with the apk]
+    LIBS += -L $$PWD/libsodium-android-armv7-a/lib -lsodium
+    ANDROID_EXTRA_LIBS = \
+        $$PWD/libsodium-android-armv7-a/lib/libsodium.so
+}
+
+contains(ANDROID_TARGET_ARCH,x86) {
+    #When building for Android-x86: Change path to match where you copied the compiled libsodium to if not the project directory
+    #Also under from Qt Gui Projects->Build & Run->Android-x86->Build Android APK->Additional Libraries [Add it to there as well so it'll be bundled with the apk]
+    LIBS += -L $$PWD/libsodium-android-i686/lib -lsodium
+    ANDROID_EXTRA_LIBS = \
+        $$PWD/libsodium-android-i686/lib/libsodium.so
+}
 
 SOURCES += \
         main.cpp \

@@ -1,25 +1,26 @@
 # YourFriendlyDNS
 A really awesome multi-platform (lin,win,mac,android) local caching and proxying dns server!
 
+![YourFriendlyDNS v2.0](YFD-macos-2.0.png)
+
 {==VERSION 2.0==} -> Major milestone!
 1. DNSCrypt now supported! Very happy I made it this far!
 You locally send it standard plaintext requests as usual and it transparently dnscrypts them for you using the dnscrypt providers you’ve specified.
 Now your queries aren’t going over the wire as plaintext anymore! Enabled by default! No fallback (must disable DNSCrypt to use plaintext dns servers again)
+2. Can enable new key pair per request otherwise a new key pair is made on every newly validated certificate for that provider.
 
 Just add DNSCrypt stamps in settings to the list of dns servers and make sure enable DNSCrypt checkbox is checked to use them!
- ex. "sdns://AQAAAAAAAAAADjIwOC42Ny4yMjAuMjIwILc1EUAgbyJdPivYItf9aR6hwzzI1maNDL4Ev6vKQ_t5GzIuZG5zY3J5cHQtY2VydC5vcGVuZG5zLmNvbQ"
- Corresponds to:
-
+ex. "sdns://AQAAAAAAAAAADjIwOC42Ny4yMjAuMjIwILc1EUAgbyJdPivYItf9aR6hwzzI1maNDL4Ev6vKQ_t5GzIuZG5zY3J5cHQtY2VydC5vcGVuZG5zLmNvbQ"
+Corresponds to:
 Protocol version 0x0001 read -> DNSCrypt!
 Provider using IPv4 address: "208.67.220.220"
 Provider PubKey aquired... len: 32
 Provider name: "2.dnscrypt-cert.opendns.com" len: 27
 
 Currently protocol version 2 (DoH / DNS over HTTPS) isn’t implemented yet, so if adding them they won’t be used at the moment.
-
 I do like how all the necessary information is all contained in the base64 encoded string, so I adopted the stamps as well. No auto sourcing them for now though, manually add them from here: https://github.com/jedisct1/dnscrypt-proxy/wiki/DNS-server-sources
 
-2. Added a cache viewer
+3. Added a cache viewer
 
 Latest version builds for all platforms will be up shortly!
 

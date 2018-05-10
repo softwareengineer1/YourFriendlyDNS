@@ -13,7 +13,7 @@ DNSCrypt::DNSCrypt(QObject *parent)
     memcpy(&resolverMagic, &serverMagic, sizeof serverMagic);
     memset(&currentCert, 0, sizeof currentCert);
     dnsCryptEnabled = true;
-    gotValidCert = false;
+    gotValidCert = newKeyPerRequest = false;
 
     if(sodium_init() < 0)
     {
@@ -50,7 +50,7 @@ void DNSCrypt::buildTXTRecord(QByteArray &txt)
         txt.append(s);
         txt.append(p);
     }
-    txt.append((quint8)0);
+    txt.append((char)0);
 
     txt.append((char*)&question, sizeof question);
     qDebug() << "Built TXT query (to get and validate server certificate):" << txt;
@@ -91,7 +91,7 @@ void DNSCrypt::makeEncryptedRequest(DNSInfo &dns)
         }
 
         qDebug() << "Alright now let's encrypt :)";
-        emit certificateVerifiedDoEncryptedLookup(currentCert, currentServer, currentPort, dns);
+        emit certificateVerifiedDoEncryptedLookup(currentCert, currentServer, currentPort, newKeyPerRequest, dns);
     }
 }
 
@@ -126,7 +126,7 @@ void DNSCrypt::validateCertificates()
     QHostAddress sender;
     quint16 senderPort;
     bool foundMagic = false;
-    int magicOffset;
+    int magicOffset = 0;
     SignedBincert bincert;
     SignedBincertFields bincertFields;
 
@@ -439,9 +439,9 @@ void CertificateResponse::addPadding(QByteArray &msg)
     for(uint32_t i = 0; i < padding; i++)
     {
         if(i == 0)
-            msg.append((quint8)0x80);
+            msg.append((char)0x80);
         else
-            msg.append((quint8)0);
+            msg.append((char)0);
     }
 }
 
@@ -460,7 +460,7 @@ void CertificateResponse::switchToTCP(DNSInfo &dns, QByteArray encryptedRequest,
     }
 }
 
-void CertificateResponse::certificateVerifiedDoEncryptedLookup(SignedBincertFields bincertFields, QHostAddress serverAddress, quint16 serverPort, DNSInfo dns)
+void CertificateResponse::certificateVerifiedDoEncryptedLookup(SignedBincertFields bincertFields, QHostAddress serverAddress, quint16 serverPort, bool newKey, DNSInfo dns)
 {
     dnsCryptQueryHeader queryHeader;
     QByteArray unencryptedRequest, encryptedRequest;
@@ -469,6 +469,7 @@ void CertificateResponse::certificateVerifiedDoEncryptedLookup(SignedBincertFiel
     currentServer = serverAddress;
     currentPort = serverPort;
 
+    if(newKey) newKeyPerRequest = true;
     if(newKeyPerRequest)
         crypto_box_keypair(pk, sk);
 

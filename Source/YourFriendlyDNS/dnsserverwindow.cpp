@@ -144,6 +144,7 @@ void DNSServerWindow::settingsUpdated()
     {
         server->dnscryptEnabled = settings->getDNSCryptEnabled();
         ui->encEnabled->setVisible(server->dnscryptEnabled);
+        server->dnscrypt.newKeyPerRequest = settings->getNewKeyPerRequestEnabled();
         server->blockmode_returnlocalhost = settings->blockmode_localhost;
         server->ipToRespondWith = QHostAddress(settings->getRespondingIP()).toIPv4Address();
         server->cachedMinutesValid = settings->getCachedMinutesValid();
@@ -185,7 +186,7 @@ void DNSServerWindow::autoCaptureCaptivePortals()
 void DNSServerWindow::iptablesUndoAndroid()
 {
     #ifdef Q_OS_ANDROID
-    AndroidSU_ServerOP *suOP = new AndroidSU_ServerOP(AndroidSU_ServerOP::opcode::iptablesRemove, server->dnsServerPort, server->httpServerPort);
+    AndroidSU_ServerOP *suOP = new AndroidSU_ServerOP(AndroidSU_ServerOP::opcode::iptablesRemove, AppData::get()->dnsServerPort, AppData::get()->httpServerPort);
     connect(suOP, SIGNAL(finished()), suOP, SLOT(deleteLater()));
     suOP->start();
     #endif
@@ -293,6 +294,8 @@ bool DNSServerWindow::settingsSave()
         json["version"] = "2.0";
         server->dnscryptEnabled = settings->getDNSCryptEnabled();
         json["dnscryptEnabled"] = server->dnscryptEnabled;
+        server->dnscrypt.newKeyPerRequest = settings->getNewKeyPerRequestEnabled();
+        json["newKeyPerRequest"] = server->dnscrypt.newKeyPerRequest;
         json["initialMode"] = server->initialMode;
         json["whitelistmode"] = server->whitelistmode;
         json["blockmode_returnlocalhost"] = server->blockmode_returnlocalhost;
@@ -388,6 +391,11 @@ bool DNSServerWindow::settingsLoad()
     {
         server->dnscryptEnabled = json["dnscryptEnabled"].toBool();
         settings->setDNSCryptEnabled(server->dnscryptEnabled);
+    }
+    if(json.contains("newKeyPerRequest") && json["newKeyPerRequest"].isBool())
+    {
+        server->dnscrypt.newKeyPerRequest = json["newKeyPerRequest"].toBool();
+        settings->setNewKeyPerRequest(server->dnscrypt.newKeyPerRequest);
     }
     if(json.contains("initialMode") && json["initialMode"].isBool())
     {

@@ -86,6 +86,7 @@ public:
     QVector<quint32> listeningIPs;
     std::vector<DNSInfo> cachedDNSResponses;
     QUdpSocket serversock;
+    DNSCrypt dnscrypt;
 
 private:
     ListEntry* getListEntry(const std::string &tame, int listType);
@@ -98,7 +99,6 @@ private:
     QHostAddress selectRandomDNSServer();
     QString selectRandomDNSCryptServer();
     QUdpSocket clientsock;
-    DNSCrypt dnscrypt;
 
 signals:
     void queryRespondedTo(ListEntry responded);

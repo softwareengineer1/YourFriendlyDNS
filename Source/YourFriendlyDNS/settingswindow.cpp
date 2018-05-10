@@ -78,6 +78,11 @@ bool SettingsWindow::getDNSCryptEnabled()
     return ui->dnscryptEnabled->isChecked();
 }
 
+bool SettingsWindow::getNewKeyPerRequestEnabled()
+{
+    return ui->newKeyPerRequest->isChecked();
+}
+
 QString SettingsWindow::getRespondingIP()
 {
     return ui->respondingIP->text();
@@ -96,6 +101,11 @@ QString SettingsWindow::getHTTPServerPort()
 void SettingsWindow::setDNSCryptEnabled(bool yes)
 {
     ui->dnscryptEnabled->setChecked(yes);
+}
+
+void SettingsWindow::setNewKeyPerRequest(bool yes)
+{
+    ui->newKeyPerRequest->setChecked(yes);
 }
 
 void SettingsWindow::setCachedMinutesValid(quint32 minutesValid)
@@ -274,5 +284,12 @@ void SettingsWindow::on_dnscryptEnabled_stateChanged(int arg1)
 {
     if(arg1)
         setDNSCryptEnabled(arg1);
+    emit settingsUpdated();
+}
+
+void SettingsWindow::on_newKeyPerRequest_stateChanged(int arg1)
+{
+    if(arg1)
+        setNewKeyPerRequest(arg1);
     emit settingsUpdated();
 }

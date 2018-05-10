@@ -86,10 +86,12 @@ public:
     void appendDNSServer(const QString &dns);
     void setRespondingIP(const QString &ip);
     bool getDNSCryptEnabled();
+    bool getNewKeyPerRequestEnabled();
     QString getRespondingIP();
     QString getDNSServerPort();
     QString getHTTPServerPort();
     void setDNSCryptEnabled(bool yes = true);
+    void setNewKeyPerRequest(bool yes = true);
     void setCachedMinutesValid(quint32 minutesValid);
     void setAutoTTL(bool autottl);
     void setdnsTTL(quint32 dnsttl);
@@ -129,6 +131,8 @@ private slots:
     void on_cacheValidMinutes_textChanged(const QString &arg1);
 
     void on_dnscryptEnabled_stateChanged(int arg1);
+
+    void on_newKeyPerRequest_stateChanged(int arg1);
 
 private:
     Ui::SettingsWindow *ui;

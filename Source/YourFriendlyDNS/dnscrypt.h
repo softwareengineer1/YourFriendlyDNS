@@ -227,7 +227,7 @@ signals:
     void deleteOldCertificatesForProvider(QString provider, SignedBincertFields newestCert);
 
 public slots:
-    void certificateVerifiedDoEncryptedLookup(SignedBincertFields bincertFields, QHostAddress serverAddress, quint16 serverPort, DNSInfo dns = DNSInfo());
+    void certificateVerifiedDoEncryptedLookup(SignedBincertFields bincertFields, QHostAddress serverAddress, quint16 serverPort, bool newKey = false, DNSInfo dns = DNSInfo());
     void switchToTCP(DNSInfo &dns, QByteArray encryptedRequest, SignedBincertFields signedBincertFields, QString providername, quint8 *nonce, quint8 *sk);
 };
 
@@ -247,12 +247,12 @@ public:
     quint8 resolverMagic[DNSCRYPT_MAGIC_QUERY_LEN];
     quint16 currentPort;
     QHostAddress currentServer;
-    bool dnsCryptAvailable, dnsCryptEnabled, gotValidCert, providerSet, changedProviders;
+    bool dnsCryptAvailable, dnsCryptEnabled, gotValidCert, providerSet, changedProviders, newKeyPerRequest;
     SignedBincertFields currentCert, lastCertUsed;
     QVector<CertificateResponse*> certCache;
 
 signals:
-    void certificateVerifiedDoEncryptedLookup(SignedBincertFields bincertFields, QHostAddress serverAddress, quint16 serverPort, DNSInfo dns = DNSInfo());
+    void certificateVerifiedDoEncryptedLookup(SignedBincertFields bincertFields, QHostAddress serverAddress, quint16 serverPort, bool newKey = false, DNSInfo dns = DNSInfo());
     void decryptedLookupDoneSendResponseNow(QByteArray response, DNSInfo &dns);
 
 public slots:

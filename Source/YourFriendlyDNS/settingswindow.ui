@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>847</width>
-    <height>429</height>
+    <height>452</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -15,7 +15,7 @@
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout">
-    <item row="19" column="3">
+    <item row="20" column="3">
      <widget class="QPushButton" name="addButton">
       <property name="font">
        <font>
@@ -27,7 +27,7 @@
       </property>
      </widget>
     </item>
-    <item row="10" column="3">
+    <item row="11" column="3">
      <widget class="QPushButton" name="ipinjectButton">
       <property name="font">
        <font>
@@ -39,7 +39,7 @@
       </property>
      </widget>
     </item>
-    <item row="19" column="2">
+    <item row="20" column="2">
      <widget class="QPushButton" name="removeButton">
       <property name="font">
        <font>
@@ -51,7 +51,7 @@
       </property>
      </widget>
     </item>
-    <item row="18" column="3">
+    <item row="19" column="3">
      <widget class="QPushButton" name="editindexButton">
       <property name="font">
        <font>
@@ -63,7 +63,7 @@
       </property>
      </widget>
     </item>
-    <item row="19" column="4">
+    <item row="20" column="4">
      <widget class="QLineEdit" name="edit_dnsserver">
       <property name="font">
        <font>
@@ -84,7 +84,7 @@
       </property>
      </widget>
     </item>
-    <item row="9" column="3">
+    <item row="10" column="3">
      <widget class="QLineEdit" name="respondingIP">
       <property name="font">
        <font>
@@ -108,7 +108,7 @@
       </property>
      </widget>
     </item>
-    <item row="16" column="0">
+    <item row="17" column="0">
      <widget class="QLabel" name="label_4">
       <property name="font">
        <font>
@@ -120,7 +120,7 @@
       </property>
      </widget>
     </item>
-    <item row="9" column="0" colspan="3">
+    <item row="10" column="0" colspan="3">
      <widget class="QRadioButton" name="option_localhost">
       <property name="font">
        <font>
@@ -135,7 +135,7 @@
       </property>
      </widget>
     </item>
-    <item row="18" column="2">
+    <item row="19" column="2">
      <widget class="QLineEdit" name="httpServerPort">
       <property name="font">
        <font>
@@ -147,7 +147,7 @@
       </property>
      </widget>
     </item>
-    <item row="17" column="2">
+    <item row="18" column="2">
      <widget class="QLineEdit" name="dnsTTL">
       <property name="font">
        <font>
@@ -159,7 +159,7 @@
       </property>
      </widget>
     </item>
-    <item row="20" column="0" colspan="5">
+    <item row="21" column="0" colspan="5">
      <widget class="QListWidget" name="realdnsservers">
       <property name="font">
        <font>
@@ -183,7 +183,7 @@
       </item>
      </widget>
     </item>
-    <item row="13" column="0" colspan="3">
+    <item row="14" column="0" colspan="3">
      <widget class="QPushButton" name="captureCaptive">
       <property name="font">
        <font>
@@ -195,7 +195,7 @@
       </property>
      </widget>
     </item>
-    <item row="17" column="0">
+    <item row="18" column="0">
      <widget class="QLabel" name="label_6">
       <property name="font">
        <font>
@@ -207,7 +207,7 @@
       </property>
      </widget>
     </item>
-    <item row="14" column="0" colspan="3">
+    <item row="15" column="0" colspan="3">
      <widget class="QPushButton" name="iptablesUndo">
       <property name="enabled">
        <bool>false</bool>
@@ -231,7 +231,7 @@
       </property>
      </widget>
     </item>
-    <item row="16" column="2">
+    <item row="17" column="2">
      <widget class="QLineEdit" name="dnsServerPort">
       <property name="font">
        <font>
@@ -243,7 +243,7 @@
       </property>
      </widget>
     </item>
-    <item row="19" column="0">
+    <item row="20" column="0">
      <widget class="QLabel" name="label_2">
       <property name="font">
        <font>
@@ -255,7 +255,7 @@
       </property>
      </widget>
     </item>
-    <item row="17" column="3">
+    <item row="18" column="3">
      <widget class="QCheckBox" name="sameAsCachedBox">
       <property name="font">
        <font>
@@ -267,7 +267,7 @@
       </property>
      </widget>
     </item>
-    <item row="10" column="0" colspan="3">
+    <item row="11" column="0" colspan="3">
      <widget class="QRadioButton" name="option_noresponse">
       <property name="font">
        <font>
@@ -279,7 +279,7 @@
       </property>
      </widget>
     </item>
-    <item row="18" column="0">
+    <item row="19" column="0">
      <widget class="QLabel" name="label_5">
       <property name="font">
        <font>
@@ -291,7 +291,7 @@
       </property>
      </widget>
     </item>
-    <item row="9" column="4">
+    <item row="10" column="4">
      <widget class="QPushButton" name="clearCacheButton">
       <property name="font">
        <font>
@@ -303,7 +303,7 @@
       </property>
      </widget>
     </item>
-    <item row="13" column="3">
+    <item row="14" column="3">
      <widget class="QCheckBox" name="autoinjectBox">
       <property name="font">
        <font>
@@ -318,7 +318,7 @@
       </property>
      </widget>
     </item>
-    <item row="4" column="0">
+    <item row="5" column="0">
      <widget class="QLabel" name="label">
       <property name="font">
        <font>
@@ -342,6 +342,18 @@
       </property>
       <property name="checked">
        <bool>true</bool>
+      </property>
+     </widget>
+    </item>
+    <item row="4" column="0">
+     <widget class="QCheckBox" name="newKeyPerRequest">
+      <property name="font">
+       <font>
+        <pointsize>11</pointsize>
+       </font>
+      </property>
+      <property name="text">
+       <string>New Key Every Request</string>
       </property>
      </widget>
     </item>

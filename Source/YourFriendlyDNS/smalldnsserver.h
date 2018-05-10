@@ -86,7 +86,7 @@ public:
     QVector<quint32> listeningIPs;
     std::vector<DNSInfo> cachedDNSResponses;
     QUdpSocket serversock;
-    DNSCrypt dnscrypt;
+    DNSCrypt *dnscrypt;
 
 private:
     ListEntry* getListEntry(const std::string &tame, int listType);

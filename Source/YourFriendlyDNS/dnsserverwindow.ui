@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>893</width>
+    <width>1014</width>
     <height>608</height>
    </rect>
   </property>
@@ -325,11 +325,19 @@
  </widget>
  <layoutdefault spacing="6" margin="11"/>
  <tabstops>
+  <tabstop>settingsButton</tabstop>
   <tabstop>hostnameEdit</tabstop>
   <tabstop>ipEdit</tabstop>
+  <tabstop>firstAddButton</tabstop>
+  <tabstop>initialMode</tabstop>
+  <tabstop>whitelistButton</tabstop>
+  <tabstop>blacklistButton</tabstop>
   <tabstop>dnslist</tabstop>
   <tabstop>dnsqueries</tabstop>
-  <tabstop>initialMode</tabstop>
+  <tabstop>secondAddButton</tabstop>
+  <tabstop>removeButton</tabstop>
+  <tabstop>saveButton</tabstop>
+  <tabstop>cacheViewButton</tabstop>
  </tabstops>
  <resources>
   <include location="images.qrc"/>

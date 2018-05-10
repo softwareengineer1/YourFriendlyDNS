@@ -60,9 +60,9 @@ void MessagesThread::run()
     emit androidInit();
     #endif
 
-    if(data->dnsServer->startServer(QHostAddress::AnyIPv4, data->dnsServerPort))
+    if(data->dnsServer->startServer(QHostAddress::Any, data->dnsServerPort))
         qDebug() << "DNS server started on address:" << data->dnsServer->serversock.localAddress() << "and port:" << data->dnsServer->serversock.localPort();
-    if(data->httpServer->startServer(QHostAddress::AnyIPv4, data->httpServerPort))
+    if(data->httpServer->startServer(QHostAddress::Any, data->httpServerPort))
         qDebug() << "HTTP server started on address:" << data->httpServer->serverAddress() << "and port:" << data->httpServer->serverPort();
 
     qDebug() << "MessagesThread started, for handling server duties!";

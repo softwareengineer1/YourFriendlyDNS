@@ -61,7 +61,9 @@ SmallDNSServer::SmallDNSServer(QObject *parent)
 
     connect(&serversock, &QUdpSocket::readyRead, this, &SmallDNSServer::processDNSRequests);
     connect(&clientsock, &QUdpSocket::readyRead, this, &SmallDNSServer::processLookups);
-    connect(&dnscrypt, &DNSCrypt::decryptedLookupDoneSendResponseNow, this, &SmallDNSServer::decryptedLookupDoneSendResponseNow);
+    dnscrypt = new DNSCrypt();
+    if(dnscrypt)
+        connect(dnscrypt, &DNSCrypt::decryptedLookupDoneSendResponseNow, this, &SmallDNSServer::decryptedLookupDoneSendResponseNow);
 }
 
 bool SmallDNSServer::startServer(QHostAddress address, quint16 port, bool reuse)
@@ -101,9 +103,18 @@ void SmallDNSServer::deleteEntriesFromCache(std::vector<ListEntry> entries)
 
 QHostAddress SmallDNSServer::selectRandomDNSServer()
 {
-    if(realdns.isEmpty())
+    bool hasDNSProviders = false;
+    for(QString &i : realdns)
     {
-        realdns.append("sdns://AQAAAAAAAAAADjIwOC42Ny4yMjAuMjIwILc1EUAgbyJdPivYItf9aR6hwzzI1maNDL4Ev6vKQ_t5GzIuZG5zY3J5cHQtY2VydC5vcGVuZG5zLmNvbQ");
+        if(!i.contains("sdns://"))
+        {
+            hasDNSProviders = true;
+            break;
+        }
+    }
+
+    if(!hasDNSProviders)
+    {
         realdns.append("208.67.222.222");
         realdns.append("208.67.220.220");
     }
@@ -119,17 +130,30 @@ QHostAddress SmallDNSServer::selectRandomDNSServer()
             break;
     }
 
-    return QHostAddress();
+    return QHostAddress("208.67.222.222");
 }
 
 QString SmallDNSServer::selectRandomDNSCryptServer()
 {
-    if(realdns.isEmpty())
+    QString oneProvider;
+    bool hasDNSCryptProviders = false;
+    quint32 providerCount = 0;
+    for(QString &i : realdns)
+    {
+        if(i.contains("sdns://"))
+        {
+            oneProvider = i;
+            hasDNSCryptProviders = true;
+            providerCount++;
+        }
+    }
+    if(!hasDNSCryptProviders)
     {
         realdns.append("sdns://AQAAAAAAAAAADjIwOC42Ny4yMjAuMjIwILc1EUAgbyJdPivYItf9aR6hwzzI1maNDL4Ev6vKQ_t5GzIuZG5zY3J5cHQtY2VydC5vcGVuZG5zLmNvbQ");
-        realdns.append("208.67.222.222");
-        realdns.append("208.67.220.220");
+        return realdns.last();
     }
+    else if(providerCount == 1)
+        return oneProvider;
 
     for(int x = 0; ; x++)
     {
@@ -144,7 +168,7 @@ QString SmallDNSServer::selectRandomDNSCryptServer()
         if(x > 100000)
             break;
     }
-    return "";
+    return "sdns://AQAAAAAAAAAADjIwOC42Ny4yMjAuMjIwILc1EUAgbyJdPivYItf9aR6hwzzI1maNDL4Ev6vKQ_t5GzIuZG5zY3J5cHQtY2VydC5vcGVuZG5zLmNvbQ";
 }
 
 void SmallDNSServer::processDNSRequests()
@@ -228,9 +252,9 @@ void SmallDNSServer::processDNSRequests()
 
                 if(dnscryptEnabled)
                 {
-                    dnscrypt.setProvider(selectRandomDNSCryptServer());
+                    dnscrypt->setProvider(selectRandomDNSCryptServer());
                     qDebug() << "Making encrypted DNS request type:" << dns.question.qtype << "for domain:" << dns.domainString << "request id:" << dns.header.id << "datagram:" << datagram;
-                    dnscrypt.makeEncryptedRequest(dns);
+                    dnscrypt->makeEncryptedRequest(dns);
                 }
                 else
                 {

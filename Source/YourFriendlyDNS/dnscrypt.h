@@ -10,6 +10,7 @@ extern "C"{
 #include <sodium.h>
 }
 #include "dnsinfo.h"
+#include "buffer.h"
 
 //Constants and structs borrowed and slightly modified from DNSCrypt proxy C version
 //Credit to jedisct1 and whoever else worked on it
@@ -72,60 +73,65 @@ class DNSCryptProvider : public QObject
 {
     Q_OBJECT
 public:
-    explicit DNSCryptProvider(QObject *parent = nullptr) { Q_UNUSED(parent); memset(providerPubKey, 0, sizeof providerPubKey); protocolVersion = 0; port = 0; props = 0; }
     DNSCryptProvider(QByteArray sdns, QObject *parent = nullptr)
     {
         Q_UNUSED(parent);
 
-        if(sdns.size() > 4 && memcmp(sdns.data(), "sdns://", 7) == 0)
+        if(sdns.size() > 7 && memcmp(sdns.data(), "sdns://", 7) == 0)
         {
             //Valid dnscrypt stamp so far...
             sdns.remove(0, 7);
-            asBase64 = sdns;
+            qDebug() << "sdns://" << sdns;
 
             QByteArray unbased = QByteArray::fromBase64(sdns, QByteArray::Base64UrlEncoding);
-            char *ptr = &unbased.data()[0], *ptr_end = &unbased.data()[unbased.size()];
 
-            protocolVersion = *ptr++;
+            Buffer addr, name;
+            quint8 addrLen, pkLen, nameLen;
+
+            Buffer::unpack("B[8]B[&2]B[&3]B[&4]", unbased.data(),
+                               &protocolVersion,
+                               &props,
+                               &addrLen,
+                               &addr,
+                               &pkLen,
+                               &providerPubKey,
+                               &nameLen,
+                               &name);
+
+            if(pkLen != crypto_box_PUBLICKEYBYTES)
+            {
+                qDebug() << "PubKey length isn't right! Invalid stamp!";
+                return;
+            }
+
+            providerName = name.toQString();
             if(protocolVersion == 1) qDebug() << "Protocol version 0x0001 read -> DNSCrypt!";
             else if(protocolVersion == 2) qDebug() << "Protocol verison 0x0002 read -> DoH";
-
-            if(ptr >= ptr_end) return;
-
-            props = *(quint64*)ptr; ptr += 8;
-
             if(props & 1) qDebug() << "Provider supports DNSSEC";
             if(props & 2) qDebug() << "Provider doesn't keep logs";
             if(props & 4) qDebug() << "Provider doesn't intentionally block domains";
 
-            if(ptr >= ptr_end) return;
-
-            quint8 addrLen = *ptr++;
-            char addr[addrLen + 1];
-
-            if((ptr + addrLen) >= ptr_end) return;
-
-            memcpy(addr, ptr, addrLen);
-            addr[addrLen] = 0;
-
-            if(addr[0] == '[')
+            if(addr.data()[0] == '[')
             {
-                ipv6Address = addr;
+                ipv6Address = addr.toQString();
                 int portOffset = ipv6Address.lastIndexOf("]:");
                 if(portOffset != -1)
                 {
                     QString ipv6Port = ipv6Address.right(portOffset + 2);
                     qDebug() << "ipv6Port:" << ipv6Port;
-                    ipv4Address.truncate(portOffset + 1);
+                    ipv6Address.truncate(portOffset + 1);
                     port = ipv6Port.toInt();
                 }
                 else
                     port = 443;
+
+                isIPv4 = false;
+                qDebug() << "Provider using IPv6 address:" << ipv4Address << "and port:" << port;
             }
             else
             {
-                ipv4Address = addr;
-                int portOffset = ipv6Address.lastIndexOf(":");
+                ipv4Address = addr.toQString();
+                int portOffset = ipv4Address.lastIndexOf(":");
                 if(portOffset != -1)
                 {
                     QString ipv4Port = ipv4Address.right(portOffset + 1);
@@ -137,43 +143,20 @@ public:
                     port = 443;
 
                 isIPv4 = true;
-                qDebug() << "Provider using IPv4 address:" << ipv4Address;
+                qDebug() << "Provider using IPv4 address:" << ipv4Address << "and port:" << port;
             }
-
-            ptr += addrLen;
-            quint8 pkLen = *ptr++;
-            if(pkLen != crypto_box_PUBLICKEYBYTES)
-            {
-                qDebug() << "PubKey length isn't right! Invalid stamp!";
-                return;
-            }
-
-            if((ptr + pkLen) >= ptr_end) return;
-
-            memcpy(providerPubKey, ptr, pkLen);
-            ptr += pkLen;
-            qDebug() << "Provider PubKey aquired... len:" << pkLen;
-
-            quint8 nameLen = *ptr++;
-            char name[nameLen + 1];
-
-            if((ptr + nameLen) > ptr_end) return;
-
-            memcpy(name, ptr, nameLen);
-            name[nameLen] = 0;
-
-            providerName = name;
-            qDebug() << "Provider name:" << providerName << "len:" << nameLen;
         }
     }
 
-    quint8 providerPubKey[crypto_box_PUBLICKEYBYTES];
+    Buffer providerPubKey;
     quint8 protocolVersion;
     quint16 port;
     quint64 props;
     QString providerName, ipv4Address, ipv6Address;
-    QByteArray asBase64;
     bool isIPv4;
+
+signals:
+    void providerHasBeenSet();
 };
 
 class EncryptedResponse : public QObject
@@ -242,6 +225,7 @@ public:
     void setProvider(QString dnscryptStamp);
 
     QUdpSocket udp;
+    QByteArray request;
     QString providerName, currentStamp;
     quint8 providerKey[crypto_box_PUBLICKEYBYTES];
     quint8 resolverMagic[DNSCRYPT_MAGIC_QUERY_LEN];

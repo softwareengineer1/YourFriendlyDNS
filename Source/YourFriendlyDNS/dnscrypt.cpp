@@ -12,8 +12,10 @@ DNSCrypt::DNSCrypt(QObject *parent)
     quint8 serverMagic[DNSCRYPT_MAGIC_QUERY_LEN] = {0x72, 0x36, 0x66, 0x6e, 0x76, 0x57, 0x6a, 0x38};
     memcpy(&resolverMagic, &serverMagic, sizeof serverMagic);
     memset(&currentCert, 0, sizeof currentCert);
+    currentServer = QHostAddress("208.67.222.222");
+    currentPort = 443;
     dnsCryptEnabled = true;
-    gotValidCert = newKeyPerRequest = false;
+    gotValidCert = newKeyPerRequest = changedProviders = false;
 
     if(sodium_init() < 0)
     {
@@ -58,7 +60,7 @@ void DNSCrypt::buildTXTRecord(QByteArray &txt)
 
 void DNSCrypt::getValidServerCertificate(DNSInfo &dns)
 {
-    QByteArray request;
+    request.clear();
     buildTXTRecord(request);
 
     udp.writeDatagram(request, currentServer, currentPort);
@@ -73,6 +75,7 @@ void DNSCrypt::getValidServerCertificate(DNSInfo &dns)
 
 void DNSCrypt::makeEncryptedRequest(DNSInfo &dns)
 {
+    if(!providerSet) return;
     if(!gotValidCert || changedProviders)
         getValidServerCertificate(dns);
     else
@@ -84,7 +87,7 @@ void DNSCrypt::makeEncryptedRequest(DNSInfo &dns)
         if(now > currentCert.ts_end)
         {
             qDebug() << "Certificate is no longer valid, requesting a fresh one! For provider:" << providerName;
-            changedProviders = gotValidCert = false;
+            gotValidCert = false;
             lastCertUsed = currentCert;
             getValidServerCertificate(dns);
             return;
@@ -100,22 +103,19 @@ void DNSCrypt::setProvider(QString dnscryptStamp)
     if(dnscryptStamp == currentStamp) return;
 
     DNSCryptProvider newProvider(dnscryptStamp.toUtf8());
-
-    if(newProvider.protocolVersion != 1)
+    if(newProvider.protocolVersion == 2)
     {
         qDebug() << "I don't support DoH / DNS Over HTTPS just yet...";
         return;
     }
 
-    if(providerSet) changedProviders = true;
-
-    providerName = newProvider.providerName;
-    memcpy(providerKey, newProvider.providerPubKey, sizeof providerKey);
     if(newProvider.isIPv4) currentServer = QHostAddress(newProvider.ipv4Address);
     else currentServer = QHostAddress(newProvider.ipv6Address);
     currentPort = newProvider.port;
+    providerName = newProvider.providerName;
+    memcpy(providerKey, newProvider.providerPubKey.data(), crypto_box_PUBLICKEYBYTES);
 
-    providerSet = true;
+    providerSet = changedProviders = true;
     currentStamp = dnscryptStamp;
     qDebug() << "Provider set!";
 }
@@ -220,6 +220,7 @@ void DNSCrypt::validateCertificates()
         lastCertUsed = currentCert;
         currentCert = bincertFields;
         gotValidCert = true;
+        changedProviders = false;
 
         qDebug() << "Valid cert!!! We have successfully validated the server's certificate, we're good to encrypt!";
         emit certificateVerifiedDoEncryptedLookup(bincertFields, currentServer, currentPort);
@@ -239,15 +240,17 @@ void DNSCrypt::deleteOldCertificatesForProvider(QString provider, SignedBincertF
     for(int i = 0; i < certCache.size(); i++)
     {
         if(certCache.at(i)->providerName == provider && newestCert.serial > certCache.at(i)->bincertFields.serial)
+        {
+            qDebug() << "Deleting certificate, for provider:" << provider << "newer serial:" << newestCert.serial << "older:" << certCache.at(i)->bincertFields.serial;
             forDeletion.push_back(i);
+        }
     }
 
     for(int &i : forDeletion)
     {
         CertificateResponse *cr = certCache.at(i);
         certCache.remove(i);
-        if(cr)
-            delete cr;
+        delete cr;
     }
 }
 
@@ -300,7 +303,7 @@ void EncryptedResponse::getAndDecryptResponseTCP()
     if(responseHandled) return;
 
     dnsCryptResponseHeader responseHeader;
-    QByteArray packet = tcp.readAll();
+    QByteArray packet = tcp.readAll(), decrypted;
 
     qDebug() << "Received encrypted TCP packet:" << packet << "with size:" << packet.size();
     if((quint32)packet.size() < sizeof responseHeader)
@@ -329,19 +332,18 @@ void EncryptedResponse::getAndDecryptResponseTCP()
         }
 
         quint32 decryptedLen = prependedPacketLen - crypto_box_MACBYTES;
-        quint8 decrypted[decryptedLen];
-        memset(decrypted, 0, sizeof decrypted);
+        decrypted.resize(decryptedLen);
         memcpy(&nonce[crypto_box_HALF_NONCEBYTES], &responseHeader.ServerNonce, crypto_box_HALF_NONCEBYTES);
 
         QByteArray response;
-        if(crypto_box_open_easy(decrypted, (quint8*)packet.data(), packet.size(), nonce, bincertFields.server_publickey, sk) != 0)
+        if(crypto_box_open_easy((quint8*)decrypted.data(), (quint8*)packet.data(), packet.size(), nonce, bincertFields.server_publickey, sk) != 0)
         {
-            response.append((char*)&decrypted, decryptedLen);
+            response.append(decrypted);
             qDebug() << "Decryption failed... :(" << response;
             return endResponse();
         }
 
-        response.append((char*)&decrypted, decryptedLen);
+        response.append(decrypted);
         removePadding(response);
         emit decryptedLookupDoneSendResponseNow(response, respondTo);
 
@@ -354,7 +356,7 @@ void EncryptedResponse::getAndDecryptResponse()
 {
     if(responseHandled) return;
 
-    QByteArray datagram;
+    QByteArray datagram, decrypted;
     QHostAddress sender;
     quint16 senderPort;
 
@@ -390,20 +392,25 @@ void EncryptedResponse::getAndDecryptResponse()
         {
             qDebug() << "We still have the magic! :)";
 
+            if(memcmp(&responseHeader.ClientNonce, nonce, sizeof(crypto_box_HALF_NONCEBYTES)) != 0)
+            {
+                qDebug() << "Unexpected nonce...";
+                return endResponse();
+            }
+
             quint32 decryptedLen = datagram.size() - crypto_box_MACBYTES;
-            quint8 decrypted[decryptedLen];
-            memset(decrypted, 0, sizeof decrypted);
+            decrypted.resize(decryptedLen);
             memcpy(&nonce[crypto_box_HALF_NONCEBYTES], &responseHeader.ServerNonce, crypto_box_HALF_NONCEBYTES);
 
             QByteArray response;
-            if(crypto_box_open_easy((quint8*)&decrypted, (quint8*)datagram.data(), datagram.size(), nonce, bincertFields.server_publickey, sk) != 0)
+            if(crypto_box_open_easy((quint8*)decrypted.data(), (quint8*)datagram.data(), datagram.size(), nonce, bincertFields.server_publickey, sk) != 0)
             {
-                response.append((char*)&decrypted, decryptedLen);
+                response.append(decrypted);
                 qDebug() << "Not decrypted..." << response;
                 return endResponse();
             }
 
-            response.append((char*)&decrypted, decryptedLen);
+            response.append(decrypted);
             removePadding(response);
             emit decryptedLookupDoneSendResponseNow(response, respondTo);
 
@@ -422,7 +429,7 @@ CertificateResponse::CertificateResponse(DNSInfo &dns, QString providername, QOb
     usingTCP = false;
     newKeyPerRequest = false;
     crypto_box_keypair(pk, sk);
-    qDebug() << "Aquired new certificate for provider:" << providername;
+    qDebug() << "Aquired NEW certificate for provider:" << providername;
 }
 
 void CertificateResponse::addPadding(QByteArray &msg)
@@ -463,13 +470,13 @@ void CertificateResponse::switchToTCP(DNSInfo &dns, QByteArray encryptedRequest,
 void CertificateResponse::certificateVerifiedDoEncryptedLookup(SignedBincertFields bincertFields, QHostAddress serverAddress, quint16 serverPort, bool newKey, DNSInfo dns)
 {
     dnsCryptQueryHeader queryHeader;
-    QByteArray unencryptedRequest, encryptedRequest;
+    QByteArray unencryptedRequest, encryptedRequest, rawEncryptedRequest;
     quint8 nonce[crypto_box_NONCEBYTES] = {0};
 
     currentServer = serverAddress;
     currentPort = serverPort;
 
-    if(newKey) newKeyPerRequest = true;
+    if(newKey) newKeyPerRequest = true; else newKeyPerRequest = false;
     if(newKeyPerRequest)
         crypto_box_keypair(pk, sk);
 
@@ -490,16 +497,16 @@ void CertificateResponse::certificateVerifiedDoEncryptedLookup(SignedBincertFiel
     qDebug() << "Request before encryption:" << unencryptedRequest << "length:" << unencryptedRequest.size();
 
     quint32 encryptedSize = unencryptedRequest.size() + crypto_box_MACBYTES;
-    quint8 rawEncryptedRequest[encryptedSize];
+    rawEncryptedRequest.resize(encryptedSize);
 
-    if(crypto_box_easy(rawEncryptedRequest, (quint8*)unencryptedRequest.data(), unencryptedRequest.size(), nonce, bincertFields.server_publickey, sk) != 0)
+    if(crypto_box_easy((quint8*)rawEncryptedRequest.data(), (quint8*)unencryptedRequest.data(), unencryptedRequest.size(), nonce, bincertFields.server_publickey, sk) != 0)
     {
         qDebug() << "Encryption failed... :(";
         return;
     }
 
     encryptedRequest.append((char*)&queryHeader, sizeof queryHeader);
-    encryptedRequest.append((char*)rawEncryptedRequest, encryptedSize);
+    encryptedRequest.append(rawEncryptedRequest);
 
     if(usingTCP)
     {
@@ -514,7 +521,7 @@ void CertificateResponse::certificateVerifiedDoEncryptedLookup(SignedBincertFiel
     EncryptedResponse *er = new EncryptedResponse(dns, encryptedRequest, bincertFields, providerName, nonce, sk);
     if(er)
     {
-        connect(er, &EncryptedResponse::switchToTCP, this, &CertificateResponse::switchToTCP, Qt::DirectConnection);
+        connect(er, &EncryptedResponse::switchToTCP, this, &CertificateResponse::switchToTCP);
         connect(er, &EncryptedResponse::decryptedLookupDoneSendResponseNow, this, &CertificateResponse::decryptedLookupDoneSendResponseNow);
 
         if(usingTCP)

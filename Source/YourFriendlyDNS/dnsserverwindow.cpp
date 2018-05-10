@@ -144,7 +144,7 @@ void DNSServerWindow::settingsUpdated()
     {
         server->dnscryptEnabled = settings->getDNSCryptEnabled();
         ui->encEnabled->setVisible(server->dnscryptEnabled);
-        server->dnscrypt.newKeyPerRequest = settings->getNewKeyPerRequestEnabled();
+        server->dnscrypt->newKeyPerRequest = settings->getNewKeyPerRequestEnabled();
         server->blockmode_returnlocalhost = settings->blockmode_localhost;
         server->ipToRespondWith = QHostAddress(settings->getRespondingIP()).toIPv4Address();
         server->cachedMinutesValid = settings->getCachedMinutesValid();
@@ -294,8 +294,8 @@ bool DNSServerWindow::settingsSave()
         json["version"] = "2.0";
         server->dnscryptEnabled = settings->getDNSCryptEnabled();
         json["dnscryptEnabled"] = server->dnscryptEnabled;
-        server->dnscrypt.newKeyPerRequest = settings->getNewKeyPerRequestEnabled();
-        json["newKeyPerRequest"] = server->dnscrypt.newKeyPerRequest;
+        server->dnscrypt->newKeyPerRequest = settings->getNewKeyPerRequestEnabled();
+        json["newKeyPerRequest"] = server->dnscrypt->newKeyPerRequest;
         json["initialMode"] = server->initialMode;
         json["whitelistmode"] = server->whitelistmode;
         json["blockmode_returnlocalhost"] = server->blockmode_returnlocalhost;
@@ -394,8 +394,8 @@ bool DNSServerWindow::settingsLoad()
     }
     if(json.contains("newKeyPerRequest") && json["newKeyPerRequest"].isBool())
     {
-        server->dnscrypt.newKeyPerRequest = json["newKeyPerRequest"].toBool();
-        settings->setNewKeyPerRequest(server->dnscrypt.newKeyPerRequest);
+        server->dnscrypt->newKeyPerRequest = json["newKeyPerRequest"].toBool();
+        settings->setNewKeyPerRequest(server->dnscrypt->newKeyPerRequest);
     }
     if(json.contains("initialMode") && json["initialMode"].isBool())
     {

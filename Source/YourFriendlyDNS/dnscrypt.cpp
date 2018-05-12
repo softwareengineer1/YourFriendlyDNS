@@ -16,6 +16,7 @@ DNSCrypt::DNSCrypt(QObject *parent)
     currentPort = 443;
     dnsCryptEnabled = true;
     gotValidCert = newKeyPerRequest = changedProviders = false;
+    providerSet = true;
 
     if(sodium_init() < 0)
     {

@@ -85,18 +85,14 @@ public:
 
             QByteArray unbased = QByteArray::fromBase64(sdns, QByteArray::Base64UrlEncoding);
 
-            Buffer addr, name;
+            ModernBuffer buffer(unbased);
+            QByteArray addr, name;
             quint8 addrLen, pkLen, nameLen;
 
-            Buffer::unpack("B[8]B[&2]B[&3]B[&4]", unbased.data(),
-                               &protocolVersion,
-                               &props,
-                               &addrLen,
-                               &addr,
-                               &pkLen,
-                               &providerPubKey,
-                               &nameLen,
-                               &name);
+            quint64 len = buffer.unpack("BIB[&3]B[&4]B[&5]", &protocolVersion, &props, &addrLen, &addr, &pkLen, &providerPubKey, &nameLen, &name);
+
+            qDebug() << "unpackedLen:" << len << "V:" << protocolVersion << "props:" << props << "addrLen:" << addrLen << "addr:" << addr << "pkLen:" << pkLen
+                     << "providerPubKey:" << providerPubKey << "nameLen:" << nameLen << "name:" << name;
 
             if(pkLen != crypto_box_PUBLICKEYBYTES)
             {
@@ -104,7 +100,7 @@ public:
                 return;
             }
 
-            providerName = name.toQString();
+            providerName = name;
             if(protocolVersion == 1) qDebug() << "Protocol version 0x0001 read -> DNSCrypt!";
             else if(protocolVersion == 2) qDebug() << "Protocol verison 0x0002 read -> DoH";
             if(props & 1) qDebug() << "Provider supports DNSSEC";
@@ -113,7 +109,7 @@ public:
 
             if(addr.data()[0] == '[')
             {
-                ipv6Address = addr.toQString();
+                ipv6Address = addr;
                 int portOffset = ipv6Address.lastIndexOf("]:");
                 if(portOffset != -1)
                 {
@@ -126,11 +122,11 @@ public:
                     port = 443;
 
                 isIPv4 = false;
-                qDebug() << "Provider using IPv6 address:" << ipv4Address << "and port:" << port;
+                qDebug() << "Provider using IPv6 address:" << ipv6Address << "and port:" << port;
             }
             else
             {
-                ipv4Address = addr.toQString();
+                ipv4Address = addr;
                 int portOffset = ipv4Address.lastIndexOf(":");
                 if(portOffset != -1)
                 {
@@ -148,7 +144,7 @@ public:
         }
     }
 
-    Buffer providerPubKey;
+    QByteArray providerPubKey;
     quint8 protocolVersion;
     quint16 port;
     quint64 props;

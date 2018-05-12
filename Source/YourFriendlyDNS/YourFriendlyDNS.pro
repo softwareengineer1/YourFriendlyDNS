@@ -35,7 +35,7 @@ INCLUDEPATH += libsodium/include
 #LIBS += $$PWD/libsodium/libsodium.lib
 
 #Uncomment next line when building for Linux/Mac, and for building for Android comment it
-#LIBS += -L $$PWD/libsodium -lsodium
+LIBS += -L $$PWD/libsodium -lsodium
 
 contains(ANDROID_TARGET_ARCH,armeabi-v7a) {
     #When building for Android-armv7: If neccessary change path to match where you copied the compiled libsodium to if not the same place below
@@ -61,8 +61,7 @@ SOURCES += \
     smallhttpserver.cpp \
     messagesthread.cpp \
     cacheviewer.cpp \
-    dnscrypt.cpp \
-    buffer.cpp
+    dnscrypt.cpp
 
 HEADERS += \
         dnsserverwindow.h \

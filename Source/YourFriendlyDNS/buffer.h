@@ -3,8 +3,8 @@
 
 //Idea from: Nigshoxiz / DemoHn -> github.com/DemoHn
 //Found here: https://github.com/DemoHn/asyncDNS-Qt/blob/master/buffer.cpp
-//Rewritten to be safer and consitently compiled across platforms to still work properly across platforms
-//Thanks for showing me a better way to do what I was doing though Nigshoxiz! :)
+//Rewritten to be safer and consistently compiled across platforms to still work properly across platforms
+//Thanks for showing me a better way to do what I needed to do Nigshoxiz! :)
 
 //Note from during rewriting: Scratch that, it's also unsafe, as different compilers compile it differently making it crash on some platforms
 //so I'm re-writing it as a c++ templated parameter pack function instead of old c style var_arg (which is causing undefined behavior and incompatibility)
@@ -39,7 +39,7 @@ public:
         var = pVar;
         size = varSize;
     }
-    void* var;
+    void *var;
     quint64 size;
 };
 
@@ -52,46 +52,30 @@ public:
     ModernBuffer(const ModernBuffer &buffer)
     {
         buf = buffer.buf;
-        fmtLen = fmtIndex = 0;
     }
     ModernBuffer(QByteArray &buffer)
     {
         buf = buffer;
-        fmtLen = fmtIndex = 0;
     }
     ModernBuffer(const char *buffer, quint64 length)
     {
         buf.append(buffer, length);
-        fmtLen = fmtIndex = 0;
     }
     ModernBuffer(quint64 startingSize)
     {
         buf.resize(startingSize);
-        fmtLen = fmtIndex = 0;
     }
-    ModernBuffer() { fmtLen = fmtIndex = 0; }
-
-    quint64 extractUpToNextClosingBracket()
-    {
-        QString extractedNum;
-        while(fmtIndex < fmtLen)
-        {
-            extractedNum += fmt[fmtIndex++];
-            if(fmt[fmtIndex] == ']')
-            {
-                return extractedNum.toLongLong();
-            }
-        }
-        return 0;
-    }
+    ModernBuffer() {  }
 
     /*
+     * pack:
      * B : Byte : 1 byte (unsigned char)
      * W : Word : 2 bytes (unsigned short)
      * L : Long : 4 bytes (unsigned int)
      * I : LongLong : 8 bytes (unsigned long long)
      * Z : String : N bytes (char* that ends with '\0')
-     * x : QByteArray : N bytes (QByteArray doesn't need to be null terminated)
+     * z : QString : N bytes (QString doesn't need to be null terminated and it uses it's size for N bytes)
+     * x : QByteArray : N bytes (QByteArray doesn't need to be null terminated and can be any data and uses it's size for N bytes)
      */
 
     template<class T, class... Params> static QByteArray pack(const char *fmt, T source, Params... next)
@@ -115,7 +99,7 @@ public:
     {
         doPackStep(source);
 
-        return unpack(next...);
+        return pack(next...);
     }
 
     template<class T> quint64 pack(T source)
@@ -127,7 +111,7 @@ public:
 
     template<class T> void doPackStep(T source)
     {
-        if((fmtIndex) == fmtLen || fmt[fmtIndex] == 0)
+        if(fmtIndex == fmtLen || fmt[fmtIndex] == 0)
             return;
 
         if(fmt[fmtIndex] == 'B')
@@ -157,12 +141,31 @@ public:
         else if(fmt[fmtIndex] == 'Z')
         {
             size_t len = strlen((const char*)source);
-            buf.append(source, len);
+            buf.append((const char*)source, len);
+            packedLen += len;
+        }
+        else if(fmt[fmtIndex] == 'z')
+        {
+            QString z;
+            if(type_name<decltype(source)>() == type_name<decltype(&z)>())
+            {
+                z = *(QString*)source;
+                buf.append(z);
+                packedLen += z.size();
+            }
+
         }
         else if(fmt[fmtIndex] == 'x')
         {
-            buf.append(source);
+            if(type_name<decltype(source)>() == type_name<decltype(&buf)>())
+            {
+                QByteArray *src = (QByteArray*)src;
+                buf.append(*src);
+                packedLen += src->size();
+            }
         }
+
+        fmtIndex++;
     }
 
     /*
@@ -212,7 +215,7 @@ public:
 
     template<class T> void doUnpackStep(T destination)
     {
-        if((fmtIndex) == fmtLen || fmt[fmtIndex] == 0)
+        if(fmtIndex == fmtLen || fmt[fmtIndex] == 0)
             return;
 
         if(fmt[fmtIndex] == 'B')
@@ -250,6 +253,7 @@ public:
         else if(fmt[fmtIndex] == '[')
         {
             fmtIndex++;
+            if(fmtIndex == fmtLen || fmt[fmtIndex] == 0) return;
             if(fmt[fmtIndex] == '&') //referencing a variable to use as the size of this variable
             {
                 fmtIndex++;
@@ -262,8 +266,8 @@ public:
                     return;
                 }
 
-                quint64 varLen = vars[referencingVarNum - 1].size;
-                memcpy(&varLen, vars[referencingVarNum - 1].var, varLen);
+                quint64 refVarLen = vars[referencingVarNum - 1].size, varLen = 0;
+                memcpy(&varLen, vars[referencingVarNum - 1].var, refVarLen);
 
                 if((quint64)buf.size() < varLen) return;
                 if(type_name<decltype(destination)>() == type_name<decltype(&buf)>())
@@ -311,6 +315,21 @@ public:
     QByteArray buf;
     std::vector<Var> vars;
     quint64 fmtIndex, fmtLen, unpackedLen, packedLen;
+
+private:
+    quint64 extractUpToNextClosingBracket()
+    {
+        QString extractedNum;
+        while(fmtIndex < fmtLen)
+        {
+            extractedNum += fmt[fmtIndex++];
+            if(fmt[fmtIndex] == ']')
+            {
+                return extractedNum.toLongLong();
+            }
+        }
+        return 0;
+    }
 };
 
 #endif // BUFFER_H

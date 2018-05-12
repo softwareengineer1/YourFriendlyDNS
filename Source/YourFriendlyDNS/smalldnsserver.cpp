@@ -155,7 +155,7 @@ QString SmallDNSServer::selectRandomDNSCryptServer()
     else if(providerCount == 1)
         return oneProvider;
 
-    for(int x = 0; ; x++)
+    for(size_t x = 0; ; x++)
     {
         QString randomServer = realdns[QRandomGenerator::global()->bounded(realdns.size())];
 

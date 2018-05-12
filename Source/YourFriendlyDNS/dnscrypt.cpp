@@ -65,7 +65,7 @@ void DNSCrypt::getValidServerCertificate(DNSInfo &dns)
     buildTXTRecord(request);
 
     udp.writeDatagram(request, currentServer, currentPort);
-    CertificateResponse *cr = new CertificateResponse(dns, providerName);
+    CertificateResponse *cr = new CertificateResponse(dns, providerName, currentServer, currentPort);
     if(cr)
     {
         certCache.append(cr);
@@ -421,7 +421,7 @@ void EncryptedResponse::getAndDecryptResponse()
     }
 }
 
-CertificateResponse::CertificateResponse(DNSInfo &dns, QString providername, QObject *parent)
+CertificateResponse::CertificateResponse(DNSInfo &dns, QString providername, QHostAddress server, quint16 port, QObject *parent)
 {
     Q_UNUSED(parent);
     respondTo = dns;
@@ -429,6 +429,9 @@ CertificateResponse::CertificateResponse(DNSInfo &dns, QString providername, QOb
     providerName = providername;
     usingTCP = false;
     newKeyPerRequest = false;
+    currentServer = server;
+    currentPort = port;
+
     crypto_box_keypair(pk, sk);
     qDebug() << "Aquired NEW certificate for provider:" << providername;
 }
@@ -474,8 +477,11 @@ void CertificateResponse::certificateVerifiedDoEncryptedLookup(SignedBincertFiel
     QByteArray unencryptedRequest, encryptedRequest, rawEncryptedRequest;
     quint8 nonce[crypto_box_NONCEBYTES] = {0};
 
-    currentServer = serverAddress;
-    currentPort = serverPort;
+    if(serverAddress != currentServer)
+    {
+        qDebug() << "Trying to use different server that doesn't match certificate's server:" << serverAddress << "Cert server:" << currentServer;
+        return;
+    }
 
     if(newKey) newKeyPerRequest = true; else newKeyPerRequest = false;
     if(newKeyPerRequest)

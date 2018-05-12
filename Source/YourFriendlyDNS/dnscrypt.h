@@ -110,16 +110,20 @@ public:
             if(addr.data()[0] == '[')
             {
                 ipv6Address = addr;
+                ipv6Address.remove(0, 1);
                 int portOffset = ipv6Address.lastIndexOf("]:");
                 if(portOffset != -1)
                 {
                     QString ipv6Port = ipv6Address.right(portOffset + 2);
                     qDebug() << "ipv6Port:" << ipv6Port;
-                    ipv6Address.truncate(portOffset + 1);
+                    ipv6Address.truncate(portOffset);
                     port = ipv6Port.toInt();
                 }
                 else
+                {
                     port = 443;
+                    ipv6Address.truncate(ipv6Address.size() - 1);
+                }
 
                 isIPv4 = false;
                 qDebug() << "Provider using IPv6 address:" << ipv6Address << "and port:" << port;
@@ -188,7 +192,7 @@ class CertificateResponse : public QObject
 {
     Q_OBJECT
 public:
-    explicit CertificateResponse(DNSInfo &dns, QString providername, QObject *parent = nullptr);
+    explicit CertificateResponse(DNSInfo &dns, QString providername, QHostAddress server, quint16 port, QObject *parent = nullptr);
     void addPadding(QByteArray &msg);
     SignedBincertFields bincertFields;
     QString providerName;

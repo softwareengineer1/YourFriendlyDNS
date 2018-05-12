@@ -20,7 +20,9 @@ Provider name: "2.dnscrypt-cert.opendns.com" len: 27
 Currently protocol version 2 (DoH / DNS over HTTPS) isn’t implemented yet, so if adding them they won’t be used at the moment.
 I do like how all the necessary information is all contained in the base64 encoded string, so I adopted the stamps as well. No auto sourcing them for now though, manually add them from here: https://github.com/jedisct1/dnscrypt-proxy/wiki/DNS-server-sources
 
-3. Added a cache viewer
+3. IPv6 has been supported without me realizing it since I’ve supported every record type (not just A)! So now I’ve made it also listen on ipv6 addresses as well as ipv4 addresses so now you can not only get ipv4/ipv6 addresses connecting to the server over ipv4 but also connecting to it over ipv6 now as well. (You can set it as an ipv6 dns server)
+
+4. Added a cache viewer
 
 Latest version builds for all platforms will be up shortly!
 
@@ -99,13 +101,16 @@ To ensure you have the latest version you may want to compile it yourself for yo
 1. Download and install the free software license (non commercial) version of Qt version 5.10 or later
 2. Download the source of the project which contains the .pro file(project file) that opens in Qt
 3. Open it in Qt and configure it to be built for your platform (for android must have android sdk and ndk installed for linux,windows,mac it'll automatically let you load it)
+(Optional: build the latest stable libsodium libraries for the platforms you’re building for, or you’ll be using my compiled ones of 1.0.16 for each platform I’ve built it for)
 4. Do a Ctrl+B or Command+B to build the project! :D Done! Ready to run ->
 
 [Two]
 1. Download the whole project (git clone or download zip) and browse to the folder of your platform (Linux-x64 for linux, Mac-x64 for mac, etc...)
 2. Copy the entire folder with all the supporting shared libraries to some location you like :D Done! Ready to run ->
 
-Note: It needs to be run as root, so it can bind and listen on udp port 53, that's the only reason it requires it.
+Note: On Linux/Mac/Android It needs to be run as root, so it can bind and listen on udp port 53, and http port 80 that's the only reason it requires it.
+On windows I discovered it doesn’t need to be run as administrator/root you just have to accept the popup so it’s not blocked in windows firewall.
+Also if you run it once and set the port to higher than 1024 that’s another way you can run it without being root (they won’t be on the default dns and http ports, but the servers will actually be running at least on your specified ports)
 
 Now how to run it :
 [Linux]

@@ -24,7 +24,7 @@ I do like how all the necessary information is all contained in the base64 encod
 
 4. Added a cache viewer
 
-Latest version builds for all platforms will be up shortly!
+Mac + Windows + Android v2.0 builds are now available!
 
 {Version 1.1.9}
 1. Another slight reduction (adding and using getListEntry similar to when I added getCachedEntry)

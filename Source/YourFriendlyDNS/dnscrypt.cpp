@@ -12,7 +12,7 @@ DNSCrypt::DNSCrypt(QObject *parent)
     quint8 serverMagic[DNSCRYPT_MAGIC_QUERY_LEN] = {0x72, 0x36, 0x66, 0x6e, 0x76, 0x57, 0x6a, 0x38};
     memcpy(&resolverMagic, &serverMagic, sizeof serverMagic);
     memset(&currentCert, 0, sizeof currentCert);
-    currentServer = QHostAddress("208.67.222.222");
+    currentServer = QHostAddress("208.67.220.220");
     currentPort = 443;
     dnsCryptEnabled = true;
     gotValidCert = newKeyPerRequest = changedProviders = false;
@@ -61,10 +61,11 @@ void DNSCrypt::buildTXTRecord(QByteArray &txt)
 
 void DNSCrypt::getValidServerCertificate(DNSInfo &dns)
 {
-    request.clear();
-    buildTXTRecord(request);
+    QByteArray txt;
+    buildTXTRecord(txt);
+    request = txt;
 
-    udp.writeDatagram(request, currentServer, currentPort);
+    udp.writeDatagram(txt, currentServer, currentPort);
     CertificateResponse *cr = new CertificateResponse(dns, providerName, currentServer, currentPort);
     if(cr)
     {
@@ -178,7 +179,13 @@ void DNSCrypt::validateCertificates()
         }
         else if(bincert.version_major == 2)
         {
-            qDebug() << "Verifying XChacha20 cert";
+            qDebug() << "Verifying XChacha20 cert"; //Idk? What do I call differently?
+            if(crypto_sign_ed25519_verify_detached(bincert.signature, bincert.signed_data, sizeof bincert.signed_data, providerKey) != 0)
+            {
+                /* Incorrect signature! */
+                qDebug() << "Incorrect signature...";
+                continue;
+            }
             continue;
         }
         else
@@ -433,14 +440,13 @@ CertificateResponse::CertificateResponse(DNSInfo &dns, QString providername, QHo
     currentPort = port;
 
     crypto_box_keypair(pk, sk);
-    qDebug() << "Aquired NEW certificate for provider:" << providername;
 }
 
 void CertificateResponse::addPadding(QByteArray &msg)
 {
     uint32_t padding = DNSCRYPT_MAX_PADDING;
 
-    while(((msg.size() + padding) % 64) != 0)
+    while(((msg.size() + padding) % DNSCRYPT_BLOCK_SIZE) != 0)
     {
         padding--;
     }
@@ -479,7 +485,7 @@ void CertificateResponse::certificateVerifiedDoEncryptedLookup(SignedBincertFiel
 
     if(serverAddress != currentServer)
     {
-        qDebug() << "Trying to use different server that doesn't match certificate's server:" << serverAddress << "Cert server:" << currentServer;
+        qDebug() << "Not the right server for certificate:" << serverAddress << "Cert server:" << currentServer;
         return;
     }
 

@@ -84,23 +84,19 @@ public:
             qDebug() << "sdns://" << sdns;
 
             QByteArray unbased = QByteArray::fromBase64(sdns, QByteArray::Base64UrlEncoding);
-
-            ModernBuffer buffer(unbased);
             QByteArray addr, name;
-            quint8 addrLen, pkLen, nameLen;
 
-            quint64 len = buffer.unpack("BIB[&3]B[&4]B[&5]", &protocolVersion, &props, &addrLen, &addr, &pkLen, &providerPubKey, &nameLen, &name);
+            //This is how easy it is now.
+            ModernBuffer::unpack(unbased, "BIzzz", &protocolVersion, &props, &addr, &providerPubKey, &name);
 
-            qDebug() << "unpackedLen:" << len << "V:" << protocolVersion << "props:" << props << "addrLen:" << addrLen << "addr:" << addr << "pkLen:" << pkLen
-                     << "providerPubKey:" << providerPubKey << "nameLen:" << nameLen << "name:" << name;
-
-            if(pkLen != crypto_box_PUBLICKEYBYTES)
+            if(providerPubKey.size() != crypto_box_PUBLICKEYBYTES)
             {
                 qDebug() << "PubKey length isn't right! Invalid stamp!";
                 return;
             }
 
             providerName = name;
+            qDebug() << "Provider name:" << providerName << "ProviderPubKey:" << providerPubKey;
             if(protocolVersion == 1) qDebug() << "Protocol version 0x0001 read -> DNSCrypt!";
             else if(protocolVersion == 2) qDebug() << "Protocol verison 0x0002 read -> DoH";
             if(props & 1) qDebug() << "Provider supports DNSSEC";

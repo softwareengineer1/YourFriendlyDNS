@@ -19,7 +19,7 @@ TEMPLATE = app
 # deprecated API in order to know how to port your code away from it.
 DEFINES += QT_DEPRECATED_WARNINGS
 #comment this next line out if you need to debug it if somethings not quite right (you'll get the qDebug() output then [and on macOS it has to be a debug build too for some reason])
-DEFINES += QT_NO_DEBUG_OUTPUT
+#DEFINES += QT_NO_DEBUG_OUTPUT
 
 # You can also make your code fail to compile if you use deprecated APIs.
 # In order to do so, uncomment the following line.
@@ -35,7 +35,7 @@ INCLUDEPATH += libsodium/include
 #LIBS += $$PWD/libsodium/libsodium.lib
 
 #Uncomment next line when building for Linux/Mac, and for building for Android comment it
-#LIBS += -L $$PWD/libsodium -lsodium
+LIBS += -L $$PWD/libsodium -lsodium
 
 contains(ANDROID_TARGET_ARCH,armeabi-v7a) {
     #When building for Android-armv7: If neccessary change path to match where you copied the compiled libsodium to if not the same place below

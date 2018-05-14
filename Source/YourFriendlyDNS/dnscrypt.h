@@ -81,13 +81,12 @@ public:
         {
             //Valid dnscrypt stamp so far...
             sdns.remove(0, 7);
-            qDebug() << "sdns://" << sdns;
+            qDebug() << QString("sdns://%1").arg(QString(sdns));
 
-            QByteArray unbased = QByteArray::fromBase64(sdns, QByteArray::Base64UrlEncoding);
-            QByteArray addr, name;
+            QByteArray unbased = QByteArray::fromBase64(sdns, QByteArray::Base64UrlEncoding), addr;
 
             //This is how easy it is now.
-            ModernBuffer::unpack(unbased, "BIzzz", &protocolVersion, &props, &addr, &providerPubKey, &name);
+            ModernBuffer::unpack(unbased, "BIzzz", &protocolVersion, &props, &addr, &providerPubKey, &providerName);
 
             if(providerPubKey.size() != crypto_box_PUBLICKEYBYTES)
             {
@@ -95,7 +94,6 @@ public:
                 return;
             }
 
-            providerName = name;
             qDebug() << "Provider name:" << providerName << "ProviderPubKey:" << providerPubKey;
             if(protocolVersion == 1) qDebug() << "Protocol version 0x0001 read -> DNSCrypt!";
             else if(protocolVersion == 2) qDebug() << "Protocol verison 0x0002 read -> DoH";

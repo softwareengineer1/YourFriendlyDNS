@@ -60,7 +60,7 @@ public:
         buf = buffer.buf;
         init();
     }
-    ModernBuffer(QByteArray &buffer)
+    ModernBuffer(const QByteArray &buffer)
     {
         buf = buffer;
         init();
@@ -75,7 +75,7 @@ public:
         buf.reserve(startingSize);
         init();
     }
-    ModernBuffer() {  }
+    ModernBuffer() { init(); }
     void init(bool isBigEndian = true)
     {
         flags = fmtIndex = fmtLen = packedLen = unpackedLen = 0;
@@ -91,8 +91,7 @@ public:
      * I : LongLong : 8 bytes (unsigned long long)
      * T : typename T : Experimental any type (this is the only time you pass a full type directly rather than by reference/pointer)
      * Z : String : N bytes (char* that ends with '\0')
-     * s : QString : N bytes (QString doesn't need to be null terminated and it uses it's size for N bytes)
-     * x : QByteArray : N bytes (QByteArray doesn't need to be null terminated and can be any data and uses it's size for N bytes)
+     * x : QByteArray or QString : N bytes (doesn't need to be null terminated and it uses it's size for N bytes)
      */
 
     template<class... Params> static QByteArray pack(const char *fmt, Params... parameters)
@@ -177,32 +176,29 @@ public:
             else
                 typeT = qToLittleEndian(*(T*)source);
 
-            buf.append((T*)&typeT, sizeof typeT);
+            buf.append((const char*)&typeT, sizeof typeT);
             packedLen += sizeof typeT;
         }
         else if(fmt[fmtIndex] == 'Z') //Null-terminated C String
         {
             size_t len = strlen((const char*)source);
-            buf.append((const char*)source, len);
-            packedLen += len;
+            buf.append((const char*)source, len + 1);
+            packedLen += len + 1;
         }
-        else if(fmt[fmtIndex] == 's') //QString
+        else if(fmt[fmtIndex] == 'x') //QByteArray or QString
         {
             QString *s;
-            if(type_name<decltype(source)>() == type_name<decltype(s)>())
-            {
-                s = (QString*)source;
-                buf.append(*s);
-                packedLen += s->size();
-            }
-        }
-        else if(fmt[fmtIndex] == 'x') //QByteArray
-        {
             if(type_name<decltype(source)>() == type_name<decltype(&buf)>())
             {
                 QByteArray *src = (QByteArray*)source;
                 buf.append(*src);
                 packedLen += src->size();
+            }
+            else if(type_name<decltype(source)>() == type_name<decltype(s)>())
+            {
+                s = (QString*)source;
+                buf.append(*s);
+                packedLen += s->size();
             }
         }
 
@@ -254,27 +250,6 @@ public:
         doUnpackStep(destination);
 
         return unpackedLen;
-    }
-
-    template<class T> void copyBytesToDestination(T destination, size_t numBytes)
-    {
-        QString str;
-        if(type_name<decltype(destination)>() == type_name<decltype(&buf)>())
-        {
-            //Copy to a QByteArray
-            QByteArray *dest = (QByteArray*)destination;
-            dest->resize(numBytes);
-            memcpy(dest->data(), buf.data(), numBytes);
-        }
-        else if(type_name<decltype(destination)>() == type_name<decltype(&str)>())
-        {
-            //Or copy to a QString
-            QString *qstr = (QString*)destination;
-            qstr->resize(numBytes);
-            memcpy(qstr->data(), buf.data(), numBytes);
-        }
-        else //Or copy to any allocated memory (there better be enough there if you call it like this)
-            memcpy((void*)destination, buf.data(), numBytes);
     }
 
     template<class T> void doUnpackStep(T destination)
@@ -338,15 +313,15 @@ public:
 
             copyBytesToDestination(destination, strLen);
 
-            buf.remove(0, strLen);
-            unpackedLen += strLen;
+            buf.remove(0, strLen + 1);
+            unpackedLen += strLen + 1;
         }
         else if(fmt[fmtIndex] == 'z') //Prefixed Length String
         {
             if(buf.size() < 1) return;
             quint8 prefixedLen = buf.at(0);
-            buf.remove(0, 1);
             if(buf.size() < prefixedLen) return;
+            buf.remove(0, 1);
 
             copyBytesToDestination(destination, prefixedLen);
 
@@ -408,6 +383,28 @@ public:
     quint8 flags;
 
 private:
+    template<class T> void copyBytesToDestination(T destination, size_t numBytes)
+    {
+        QString str;
+        if(type_name<decltype(destination)>() == type_name<decltype(&buf)>())
+        {
+            //Copy to a QByteArray
+            QByteArray *dest = (QByteArray*)destination;
+            dest->resize(numBytes);
+            memcpy(dest->data(), buf.data(), numBytes);
+        }
+        else if(type_name<decltype(destination)>() == type_name<decltype(&str)>())
+        {
+            //Or copy to a QString
+            QString *qstr = (QString*)destination;
+            QByteArray dest;
+            dest.resize(numBytes);
+            memcpy(dest.data(), buf.data(), numBytes);
+            *qstr = dest;
+        }
+        else //Or copy to any allocated memory (there better be enough there if you call it like this)
+            memcpy((void*)destination, buf.data(), numBytes);
+    }
     quint64 extractUpToNextClosingBracket()
     {
         QString extractedNum;

@@ -92,9 +92,7 @@ public:
         this->isValid = info.isValid;
         this->isResponse = info.isResponse;
         this->hasIPs = info.hasIPs;
-        this->ipaddresses.clear();
-        for(auto i : info.ipaddresses)
-            this->ipaddresses.push_back(i);
+        this->ipaddresses = info.ipaddresses;
         this->expiry = info.expiry;
         this->req = info.req;
         this->res = info.res;

@@ -189,7 +189,7 @@ private:
 
 signals:
     void decryptedLookupDoneSendResponseNow(QByteArray response, DNSInfo &dns);
-    void switchToTCP(DNSInfo &dns, QByteArray encryptedRequest, SignedBincertFields signedBincertFields, QString providername, quint8 *nonce, quint8 *sk);
+    void resendUsingTCP(DNSInfo &dns, QByteArray encryptedRequest, SignedBincertFields signedBincertFields, QString providername, quint8 *nonce, quint8 *sk);
 
 public slots:
     void writeEncryptedRequestTCP();
@@ -220,7 +220,7 @@ signals:
 
 public slots:
     void certificateVerifiedDoEncryptedLookup(SignedBincertFields bincertFields, QHostAddress serverAddress, quint16 serverPort, bool newKey = false, DNSInfo dns = DNSInfo());
-    void switchToTCP(DNSInfo &dns, QByteArray encryptedRequest, SignedBincertFields signedBincertFields, QString providername, quint8 *nonce, quint8 *sk);
+    void resendUsingTCP(DNSInfo &dns, QByteArray encryptedRequest, SignedBincertFields signedBincertFields, QString providername, quint8 *nonce, quint8 *sk);
 };
 
 class DNSCrypt : public QObject

@@ -377,16 +377,7 @@ void EncryptedResponse::getAndDecryptResponse()
 
         qDebug() << "Received encrypted UDP datagram:" << datagram << "with size:" << datagram.size();
 
-        if(datagram.size() >= DNS_HEADER_SIZE)
-        {
-            DNS_HEADER *dnsh = (DNS_HEADER*)datagram.data();
-            if(dnsh->tc == 1)
-            {
-                qDebug() << "TCFlag set, it wants us to use TCP! Switching now for provider:" << providerName;
-                emit switchToTCP(respondTo, encRequest, bincertFields, providerName, nonce, sk);
-                return endResponse();
-            }
-        }
+
         if((quint32)datagram.size() < sizeof responseHeader)
         {
             qDebug() << "Datagram too small...";
@@ -416,6 +407,17 @@ void EncryptedResponse::getAndDecryptResponse()
                 response.append(decrypted);
                 qDebug() << "Not decrypted..." << response;
                 return endResponse();
+            }
+
+            if(decrypted.size() >= DNS_HEADER_SIZE)
+            {
+                DNS_HEADER *dnsh = (DNS_HEADER*)decrypted.data();
+                if(dnsh->tc == 1)
+                {
+                    qDebug() << "TCFlag set / truncated message, using tcp for this request:" << providerName;
+                    emit resendUsingTCP(respondTo, encRequest, bincertFields, providerName, nonce, sk);
+                    return endResponse();
+                }
             }
 
             response.append(decrypted);
@@ -461,9 +463,8 @@ void CertificateResponse::addPadding(QByteArray &msg)
     }
 }
 
-void CertificateResponse::switchToTCP(DNSInfo &dns, QByteArray encryptedRequest, SignedBincertFields signedBincertFields, QString providername, quint8 *nonce, quint8 *sk)
+void CertificateResponse::resendUsingTCP(DNSInfo &dns, QByteArray encryptedRequest, SignedBincertFields signedBincertFields, QString providername, quint8 *nonce, quint8 *sk)
 {
-    usingTCP = true;
     quint16 prependedPacketLen = encryptedRequest.size();
     prependedPacketLen = qToBigEndian(prependedPacketLen);
     encryptedRequest.prepend((const char*)&prependedPacketLen, 2);
@@ -533,7 +534,7 @@ void CertificateResponse::certificateVerifiedDoEncryptedLookup(SignedBincertFiel
     EncryptedResponse *er = new EncryptedResponse(dns, encryptedRequest, bincertFields, providerName, nonce, sk);
     if(er)
     {
-        connect(er, &EncryptedResponse::switchToTCP, this, &CertificateResponse::switchToTCP);
+        connect(er, &EncryptedResponse::resendUsingTCP, this, &CertificateResponse::resendUsingTCP);
         connect(er, &EncryptedResponse::decryptedLookupDoneSendResponseNow, this, &CertificateResponse::decryptedLookupDoneSendResponseNow);
 
         if(usingTCP)

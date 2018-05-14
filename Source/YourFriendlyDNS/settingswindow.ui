@@ -334,7 +334,7 @@
      <widget class="QCheckBox" name="dnscryptEnabled">
       <property name="font">
        <font>
-        <pointsize>12</pointsize>
+        <pointsize>11</pointsize>
        </font>
       </property>
       <property name="text">
@@ -349,11 +349,23 @@
      <widget class="QCheckBox" name="newKeyPerRequest">
       <property name="font">
        <font>
-        <pointsize>11</pointsize>
+        <pointsize>10</pointsize>
        </font>
       </property>
       <property name="text">
        <string>New Key Every Request</string>
+      </property>
+     </widget>
+    </item>
+    <item row="3" column="2">
+     <widget class="QPushButton" name="backButton">
+      <property name="font">
+       <font>
+        <pointsize>10</pointsize>
+       </font>
+      </property>
+      <property name="text">
+       <string>Go Back!</string>
       </property>
      </widget>
     </item>

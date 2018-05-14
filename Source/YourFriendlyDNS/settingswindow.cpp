@@ -293,3 +293,8 @@ void SettingsWindow::on_newKeyPerRequest_stateChanged(int arg1)
         setNewKeyPerRequest(arg1);
     emit settingsUpdated();
 }
+
+void SettingsWindow::on_backButton_clicked()
+{
+    this->hide();
+}

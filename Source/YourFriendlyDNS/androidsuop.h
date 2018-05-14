@@ -1,6 +1,8 @@
 #ifndef ANDROIDSUOP_H
 #define ANDROIDSUOP_H
 
+#ifdef Q_OS_ANDROID
+
 #include <QThread>
 #include <QProcess>
 
@@ -111,5 +113,7 @@ public:
         }
     }
 };
+
+#endif
 
 #endif // ANDROIDSUOP_H

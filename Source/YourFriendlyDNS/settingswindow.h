@@ -134,6 +134,8 @@ private slots:
 
     void on_newKeyPerRequest_stateChanged(int arg1);
 
+    void on_backButton_clicked();
+
 private:
     Ui::SettingsWindow *ui;
 };

@@ -196,7 +196,7 @@ public:
                 prefixedLen = src->size();
                 buf.append(prefixedLen);
                 buf.append(*src);
-                packedLen += prefixedLen;
+                packedLen += prefixedLen + 1;
             }
             else if(type_name<decltype(source)>() == type_name<decltype(s)>())
             {
@@ -204,7 +204,7 @@ public:
                 prefixedLen = s->size();
                 buf.append(prefixedLen);
                 buf.append(*s);
-                packedLen += prefixedLen;
+                packedLen += prefixedLen + 1;
             }
         }
         else if(fmt[fmtIndex] == 'x') //QByteArray or QString

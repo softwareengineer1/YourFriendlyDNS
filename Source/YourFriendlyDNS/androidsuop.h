@@ -51,16 +51,18 @@ public:
         if(op == opcode::iptablesSet)
         {
             //Run su, enable ipv4 forwarding, and do iptables redirect from port 53(dns) to 5333 (where this server is binded on android by default), also 80 to 8080 now
-            su.start("su"); //First time running it, accept the root prompt
-            if(!su.waitForStarted())
+            du.start("su"); //First time running it, accept the root prompt
+            if(!du.waitForStarted())
                 return;
-            du.start("su");
-            du.waitForStarted();
             du.write(QString("iptables -t nat --list | grep \"ports %1\"\n").arg(dnsServerPort).toUtf8());
             du.waitForFinished();
             QByteArray listresult = du.read(4096);
-
             qDebug() << "iptables dns port list result:" << listresult << "list size:" << listresult.size();
+
+            su.start("su");
+            if(!su.waitForStarted())
+                return;
+
             if(listresult.size() == 0)
             {
                 qDebug() << "iptables dns not set yet, setting dns iptables now...";

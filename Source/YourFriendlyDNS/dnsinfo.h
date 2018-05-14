@@ -68,30 +68,38 @@ public:
         memset(&header, 0, sizeof(header));
         memset(&question, 0, sizeof(question));
         answeroffset = 0;
+        senderPort = 0;
         ttl = 0;
         isValid = isResponse = hasIPs = false;
         expiry = QDateTime::currentDateTime();
     }
     DNSInfo(const DNSInfo &info)
     {
-        memcpy(&header, &info.header, sizeof(header));
-        memcpy(&question, &info.question, sizeof(question));
-        domainString = info.domainString;
-        answeroffset = info.answeroffset;
-        ttl = info.ttl;
-        isValid = info.isValid;
-        isResponse = info.isResponse;
-        hasIPs = info.hasIPs;
-        ipaddresses.clear();
-        for(auto i : info.ipaddresses)
-            ipaddresses.push_back(i);
-        expiry = info.expiry;
-        req = info.req;
-        res = info.res;
+        copyDNSInfoFrom(info);
     }
     DNSInfo operator=(const DNSInfo &info)
     {
-        return info;
+        copyDNSInfoFrom(info);
+        return *this;
+    }
+    void copyDNSInfoFrom(const DNSInfo &info)
+    {
+        memcpy(&this->header, &info.header, sizeof(header));
+        memcpy(&this->question, &info.question, sizeof(question));
+        this->domainString = info.domainString;
+        this->answeroffset = info.answeroffset;
+        this->ttl = info.ttl;
+        this->isValid = info.isValid;
+        this->isResponse = info.isResponse;
+        this->hasIPs = info.hasIPs;
+        this->ipaddresses.clear();
+        for(auto i : info.ipaddresses)
+            this->ipaddresses.push_back(i);
+        this->expiry = info.expiry;
+        this->req = info.req;
+        this->res = info.res;
+        this->sender = info.sender;
+        this->senderPort = info.senderPort;
     }
     DNS_HEADER header;
     QUESTION question;

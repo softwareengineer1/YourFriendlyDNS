@@ -105,17 +105,17 @@ void DNSCrypt::setProvider(QString dnscryptStamp)
     if(dnscryptStamp == currentStamp) return;
 
     DNSCryptProvider newProvider(dnscryptStamp.toUtf8());
-    if(newProvider.protocolVersion == 2)
+    if(newProvider.protocolVersion == 2 || newProvider.protocolVersion == 3)
     {
-        qDebug() << "I don't support DoH / DNS Over HTTPS just yet...";
+        qDebug() << "I don't support DNS Over HTTP2 or DNS over TLS just yet...";
         return;
     }
 
-    if(newProvider.isIPv4) currentServer = QHostAddress(newProvider.ipv4Address);
-    else currentServer = QHostAddress(newProvider.ipv6Address);
+    currentServer = QHostAddress(newProvider.addr);
     currentPort = newProvider.port;
     providerName = newProvider.providerName;
-    memcpy(providerKey, newProvider.providerPubKey.data(), crypto_box_PUBLICKEYBYTES);
+    if(newProvider.providerPubKey.size() == crypto_box_PUBLICKEYBYTES)
+        memcpy(providerKey, newProvider.providerPubKey.data(), crypto_box_PUBLICKEYBYTES);
 
     providerSet = changedProviders = true;
     currentStamp = dnscryptStamp;
@@ -247,7 +247,7 @@ void DNSCrypt::deleteOldCertificatesForProvider(QString provider, SignedBincertF
     std::vector<int> forDeletion;
     for(int i = 0; i < certCache.size(); i++)
     {
-        if(certCache.at(i)->providerName == provider && newestCert.serial > certCache.at(i)->bincertFields.serial)
+        if((certCache.at(i)->providerName == provider && newestCert.serial > certCache.at(i)->bincertFields.serial))
         {
             qDebug() << "Deleting certificate, for provider:" << provider << "newer serial:" << newestCert.serial << "older:" << certCache.at(i)->bincertFields.serial;
             forDeletion.push_back(i);
@@ -432,7 +432,6 @@ CertificateResponse::CertificateResponse(DNSInfo &dns, QString providername, QHo
 {
     Q_UNUSED(parent);
     respondTo = dns;
-    respondTo.req = dns.req;
     providerName = providername;
     usingTCP = false;
     newKeyPerRequest = false;
@@ -444,7 +443,7 @@ CertificateResponse::CertificateResponse(DNSInfo &dns, QString providername, QHo
 
 void CertificateResponse::addPadding(QByteArray &msg)
 {
-    uint32_t padding = DNSCRYPT_MAX_PADDING;
+    quint32 padding = DNSCRYPT_MAX_PADDING;
 
     while(((msg.size() + padding) % DNSCRYPT_BLOCK_SIZE) != 0)
     {
@@ -453,7 +452,7 @@ void CertificateResponse::addPadding(QByteArray &msg)
 
     qDebug() << padding << "bytes of padding chosen! new msg size:" << msg.size() + padding;
 
-    for(uint32_t i = 0; i < padding; i++)
+    for(quint32 i = 0; i < padding; i++)
     {
         if(i == 0)
             msg.append((char)0x80);
@@ -538,12 +537,8 @@ void CertificateResponse::certificateVerifiedDoEncryptedLookup(SignedBincertFiel
         connect(er, &EncryptedResponse::decryptedLookupDoneSendResponseNow, this, &CertificateResponse::decryptedLookupDoneSendResponseNow);
 
         if(usingTCP)
-        {
             er->tcp.connectToHost(serverAddress, serverPort);
-        }
         else
-        {
             er->udp.writeDatagram(encryptedRequest, serverAddress, serverPort);
-        }
     }
 }

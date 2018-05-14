@@ -83,74 +83,89 @@ public:
             sdns.remove(0, 7);
             qDebug() << QString("sdns://%1").arg(QString(sdns));
 
-            QByteArray unbased = QByteArray::fromBase64(sdns, QByteArray::Base64UrlEncoding), addr;
+            QByteArray unbased = QByteArray::fromBase64(sdns, QByteArray::Base64UrlEncoding);
 
-            //This is how easy it is now.
-            ModernBuffer::unpack(unbased, "BIzzz", &protocolVersion, &props, &addr, &providerPubKey, &providerName);
-
-            if(providerPubKey.size() != crypto_box_PUBLICKEYBYTES)
+            //Got to interpret it differently based on the protocol version though
+            ModernBuffer buffer(unbased);
+            buffer.unpack("BI", &protocolVersion, &props);
+            switch(protocolVersion)
             {
-                qDebug() << "PubKey length isn't right! Invalid stamp!";
+            case 0:
+                buffer.unpack("z", &addr);
+                qDebug() << "Protocol version 0x0000 read -> Plain DNS! You should enter it in the app plainly too, addr:" << addr << "props:" << props;
+                return;
+            case 1:
+                buffer.unpack("zzz", &addr, &providerPubKey, &providerName);
+                qDebug() << "Protocol version 0x0001 read -> DNSCrypt!";
+
+                if(providerPubKey.size() != crypto_box_PUBLICKEYBYTES)
+                {
+                    qDebug() << "PubKey length isn't right! Invalid stamp!";
+                    return;
+                }
+                break;
+            case 2:
+                qDebug() << "Protocol version 0x0002 read -> DNS over HTTP2, coming soon!";
+                return;
+            case 3:
+                qDebug() << "Protocol version 0x0003 read -> DNS over TLS, coming soon!";
+                return;
+            default:
+                qDebug() << "Unknown and unsupported protocol version...";
                 return;
             }
 
             qDebug() << "Provider name:" << providerName << "ProviderPubKey:" << providerPubKey;
-            if(protocolVersion == 1) qDebug() << "Protocol version 0x0001 read -> DNSCrypt!";
-            else if(protocolVersion == 2) qDebug() << "Protocol verison 0x0002 read -> DoH";
             if(props & 1) qDebug() << "Provider supports DNSSEC";
             if(props & 2) qDebug() << "Provider doesn't keep logs";
             if(props & 4) qDebug() << "Provider doesn't intentionally block domains";
 
-            if(addr.data()[0] == '[')
-            {
-                ipv6Address = addr;
-                ipv6Address.remove(0, 1);
-                int portOffset = ipv6Address.lastIndexOf("]:");
-                if(portOffset != -1)
-                {
-                    QString ipv6Port = ipv6Address.right(portOffset + 2);
-                    qDebug() << "ipv6Port:" << ipv6Port;
-                    ipv6Address.truncate(portOffset);
-                    port = ipv6Port.toInt();
-                }
-                else
-                {
-                    port = 443;
-                    ipv6Address.truncate(ipv6Address.size() - 1);
-                }
-
-                isIPv4 = false;
-                qDebug() << "Provider using IPv6 address:" << ipv6Address << "and port:" << port;
-            }
-            else
-            {
-                ipv4Address = addr;
-                int portOffset = ipv4Address.lastIndexOf(":");
-                if(portOffset != -1)
-                {
-                    QString ipv4Port = ipv4Address.right(portOffset + 1);
-                    qDebug() << "ipv4Port:" << ipv4Port;
-                    ipv4Address.truncate(portOffset);
-                    port = ipv4Port.toInt();
-                }
-                else
-                    port = 443;
-
-                isIPv4 = true;
-                qDebug() << "Provider using IPv4 address:" << ipv4Address << "and port:" << port;
-            }
+            interpretIPPort();
         }
     }
-
-    QByteArray providerPubKey;
     quint8 protocolVersion;
     quint16 port;
     quint64 props;
-    QString providerName, ipv4Address, ipv6Address;
-    bool isIPv4;
+    QString providerName, addr;
+    QByteArray providerPubKey;
 
-signals:
-    void providerHasBeenSet();
+private:
+    void interpretIPPort()
+    {
+        if(addr.size() == 0) return;
+        if(addr.data()[0] == '[')
+        {
+            addr.remove(0, 1);
+            int portOffset = addr.lastIndexOf("]:");
+            if(portOffset != -1)
+            {
+                QString ipv6Port = addr.right(portOffset + 2);
+                addr.truncate(portOffset);
+                port = ipv6Port.toInt();
+            }
+            else
+            {
+                port = 443;
+                addr.truncate(addr.size() - 1);
+            }
+
+            qDebug() << "Provider using IPv6 address:" << addr << "and port:" << port;
+        }
+        else
+        {
+            int portOffset = addr.lastIndexOf(":");
+            if(portOffset != -1)
+            {
+                QString ipv4Port = addr.right(portOffset + 1);
+                addr.truncate(portOffset);
+                port = ipv4Port.toInt();
+            }
+            else
+                port = 443;
+
+            qDebug() << "Provider using IPv4 address:" << addr << "and port:" << port;
+        }
+    }
 };
 
 class EncryptedResponse : public QObject

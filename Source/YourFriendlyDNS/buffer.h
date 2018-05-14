@@ -91,6 +91,7 @@ public:
      * I : LongLong : 8 bytes (unsigned long long)
      * T : typename T : Experimental any type (this is the only time you pass a full type directly rather than by reference/pointer)
      * Z : String : N bytes (char* that ends with '\0')
+     * z : Prefixed Length String : [N][N Bytes] (char* that's prefixed with it's length using a single byte) from a QString or QByteArray
      * x : QByteArray or QString : N bytes (doesn't need to be null terminated and it uses it's size for N bytes)
      */
 
@@ -184,6 +185,27 @@ public:
             size_t len = strlen((const char*)source);
             buf.append((const char*)source, len + 1);
             packedLen += len + 1;
+        }
+        else if(fmt[fmtIndex] == 'z') //Prefixed Length String
+        {
+            quint8 prefixedLen;
+            QString *s;
+            if(type_name<decltype(source)>() == type_name<decltype(&buf)>())
+            {
+                QByteArray *src = (QByteArray*)source;
+                prefixedLen = src->size();
+                buf.append(prefixedLen);
+                buf.append(*src);
+                packedLen += prefixedLen;
+            }
+            else if(type_name<decltype(source)>() == type_name<decltype(s)>())
+            {
+                s = (QString*)source;
+                prefixedLen = s->size();
+                buf.append(prefixedLen);
+                buf.append(*s);
+                packedLen += prefixedLen;
+            }
         }
         else if(fmt[fmtIndex] == 'x') //QByteArray or QString
         {
@@ -320,8 +342,8 @@ public:
         {
             if(buf.size() < 1) return;
             quint8 prefixedLen = buf.at(0);
-            if(buf.size() < prefixedLen) return;
             buf.remove(0, 1);
+            if(buf.size() < prefixedLen) return;
 
             copyBytesToDestination(destination, prefixedLen);
 

@@ -79,26 +79,19 @@ void SmallDNSServer::clearDNSCache()
 
 void SmallDNSServer::deleteEntriesFromCache(std::vector<ListEntry> entries)
 {
-    std::vector<size_t> deleteme;
-    size_t cachedSize = cachedDNSResponses.size();
+    DNSInfo cmp;
     size_t deletionSize = entries.size();
-    qDebug() << "cached:" << cachedSize << "deletion:" << deletionSize;
-    for(size_t i = 0; i < cachedSize; i++)
+    qDebug() << "# cached:" << cachedDNSResponses.size() << "# deleting:" << deletionSize;
+    for(size_t x = 0; x < deletionSize; x++)
     {
-        qDebug() << "i:" << i;
-        for(size_t x = 0; x < deletionSize; x++)
-        {
-            qDebug() << "Deleting:" << x << entries[x].hostname << entries[x].ip;
-            if(cachedDNSResponses[i].domainString == entries[x].hostname && cachedDNSResponses[i].question.qtype == entries[x].ip)
-            {
-                deleteme.push_back(i);
-            }
-        }
+        cmp.domainString = entries[x].hostname;
+        cmp.question.qtype = entries[x].ip;
+
+        std::remove(cachedDNSResponses.begin(), cachedDNSResponses.end(), cmp);
     }
-    for(size_t i : deleteme)
-    {
-        cachedDNSResponses.erase(cachedDNSResponses.begin()+i);
-    }
+
+    qDebug() << "Deleting...";
+    cachedDNSResponses.erase(cachedDNSResponses.end() - deletionSize, cachedDNSResponses.end());
 }
 
 QHostAddress SmallDNSServer::selectRandomDNSServer()

@@ -65,9 +65,9 @@ void CacheViewer::on_removeButton_clicked()
     for(QTreeWidgetItem *i : selected)
     {
         if(i->text(1) == "A")
-            entries.push_back(ListEntry(i->text(1), 1));
+            entries.push_back(ListEntry(i->text(0), 1)); //Reusing the ip field as a record type field just for this
         else
-            entries.push_back(ListEntry(i->text(1), i->text(1).toInt()));
+            entries.push_back(ListEntry(i->text(0), i->text(1).toInt()));
     }
     qDeleteAll(selected);
     emit deleteEntriesFromCache(entries);

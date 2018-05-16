@@ -29,7 +29,7 @@ DNSServerWindow::DNSServerWindow(QWidget *parent) : QMainWindow(parent), ui(new 
 {
     ui->setupUi(this);
     qRegisterMetaType<ListEntry>("ListEntry");
-    qRegisterMetaType<ListEntry>("std::vector<ListEntry>");
+    qRegisterMetaType<std::vector<ListEntry>>("std::vector<ListEntry>");
 
     settingspath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
     QDir d{settingspath};

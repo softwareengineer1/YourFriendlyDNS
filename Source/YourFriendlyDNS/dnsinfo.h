@@ -82,6 +82,10 @@ public:
         copyDNSInfoFrom(info);
         return *this;
     }
+    bool operator==(const DNSInfo &info)
+    {
+        return (this->domainString == info.domainString && this->question.qtype == info.question.qtype);
+    }
     void copyDNSInfoFrom(const DNSInfo &info)
     {
         memcpy(&this->header, &info.header, sizeof(header));

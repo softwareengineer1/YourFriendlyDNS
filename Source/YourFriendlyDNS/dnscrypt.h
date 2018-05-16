@@ -80,8 +80,8 @@ public:
         if(sdns.size() > 7 && memcmp(sdns.data(), "sdns://", 7) == 0)
         {
             //Valid dnscrypt stamp so far...
+            qDebug() << sdns;
             sdns.remove(0, 7);
-            qDebug() << QString("sdns://%1").arg(QString(sdns));
 
             QByteArray unbased = QByteArray::fromBase64(sdns, QByteArray::Base64UrlEncoding);
 

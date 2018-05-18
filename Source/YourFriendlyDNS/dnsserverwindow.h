@@ -53,6 +53,7 @@ signals:
 
 public slots:
     void serversInitialized();
+    void displayLastUsedProvider(QString providerName, QHostAddress server, quint16 port);
     void androidInit();
     void htmlChanged(QString &html);
     void setIPToFirstListening();
@@ -72,7 +73,6 @@ private slots:
     void on_ipEdit_returnPressed();
     void on_secondAddButton_clicked();
     void on_settingsButton_clicked();
-
     void on_cacheViewButton_clicked();
 
 private:

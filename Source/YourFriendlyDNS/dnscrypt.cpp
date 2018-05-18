@@ -66,20 +66,20 @@ void DNSCrypt::getValidServerCertificate(DNSInfo &dns)
     buildTXTRecord(txt);
 
     udp.writeDatagram(txt, currentServer, currentPort);
-    CertificateResponse *cr = new CertificateResponse(dns, providerName, currentServer, currentPort);
+    CertificateHolder *cr = new CertificateHolder(dns, providerName, currentServer, currentPort);
     if(cr)
     {
         certCache.append(cr);
-        connect(this, &DNSCrypt::certificateVerifiedDoEncryptedLookup, cr, &CertificateResponse::certificateVerifiedDoEncryptedLookup);
-        connect(cr, &CertificateResponse::decryptedLookupDoneSendResponseNow, this, &DNSCrypt::decryptedLookupDoneSendResponseNow2);
+        connect(this, &DNSCrypt::certificateVerifiedDoEncryptedLookup, cr, &CertificateHolder::certificateVerifiedDoEncryptedLookup);
+        connect(cr, &CertificateHolder::decryptedLookupDoneSendResponseNow, this, &DNSCrypt::decryptedLookupDoneSendResponseNow2);
     }
 }
 
-CertificateResponse* DNSCrypt::getCachedCert(QHostAddress server, QString provider)
+CertificateHolder *DNSCrypt::getCachedCert(QHostAddress server, QString provider)
 {
-    for(CertificateResponse *c : certCache)
+    for(CertificateHolder *c : certCache)
     {
-        if(c->currentServer == server && c->providerName == provider)
+        if(c->certServer == server && c->providerName == provider)
         {
             return c;
         }
@@ -89,7 +89,7 @@ CertificateResponse* DNSCrypt::getCachedCert(QHostAddress server, QString provid
 
 void DNSCrypt::makeEncryptedRequest(DNSInfo &dns)
 {
-    CertificateResponse *c = getCachedCert(currentServer, providerName);
+    CertificateHolder *c = getCachedCert(currentServer, providerName);
     if(c != nullptr && !pendingValidation)
     {
         currentCert = c->bincertFields;
@@ -125,6 +125,7 @@ void DNSCrypt::setProvider(QString dnscryptStamp)
         memcpy(providerKey, newProvider.providerPubKey.data(), crypto_box_PUBLICKEYBYTES);
 
     currentStamp = dnscryptStamp;
+    emit displayLastUsedProvider(providerName, currentServer, currentPort);
     qDebug() << "Provider set!";
 }
 
@@ -248,29 +249,30 @@ void DNSCrypt::decryptedLookupDoneSendResponseNow2(const QByteArray &response, D
 
 void DNSCrypt::deleteOldCertificatesForProvider(QString provider, QHostAddress server, SignedBincertFields newestCert)
 {
-    std::vector<int> forDeletion;
     bool isDuplicate = false;
     for(int i = 0; i < certCache.size(); i++)
     {
-        if((certCache.at(i)->providerName == provider && certCache.at(i)->currentServer == server
-            && memcmp(&certCache.at(i)->bincertFields, &newestCert, sizeof(SignedBincertFields)) == 0))
+        if((certCache.at(i)->providerName == provider && certCache.at(i)->certServer == server))
         {
-            if(!isDuplicate)
-                isDuplicate = true;
-            else
+            if(memcmp(&certCache.at(i)->bincertFields, &newestCert, sizeof(SignedBincertFields)) == 0)
             {
-                qDebug() << "Deleting certificate, for provider:" << provider << "is duplicate...";
-                CertificateResponse *cr = certCache.at(i);
-                certCache.remove(i);
-                delete cr;
-                i--;
-                continue;
+                if(!isDuplicate)
+                    isDuplicate = true;
+                else
+                {
+                    qDebug() << "Deleting duplicate certificate, for provider:" << provider << "server:" << server << "cert serial:" << newestCert.serial;
+                    CertificateHolder *cr = certCache.at(i);
+                    certCache.remove(i);
+                    delete cr;
+                    i--;
+                    continue;
+                }
             }
 
             if(newestCert.serial > certCache.at(i)->bincertFields.serial)
             {
                 qDebug() << "Deleting certificate, for provider:" << provider << "newer serial:" << newestCert.serial << "older:" << certCache.at(i)->bincertFields.serial;
-                CertificateResponse *cr = certCache.at(i);
+                CertificateHolder *cr = certCache.at(i);
                 certCache.remove(i);
                 delete cr;
                 i--;
@@ -438,19 +440,19 @@ void EncryptedResponse::getAndDecryptResponse()
     }
 }
 
-CertificateResponse::CertificateResponse(DNSInfo &dns, QString providername, QHostAddress server, quint16 port, QObject *parent)
+CertificateHolder::CertificateHolder(DNSInfo &dns, QString providername, QHostAddress server, quint16 port, QObject *parent)
 {
     Q_UNUSED(parent);
     respondTo = dns;
     providerName = providername;
     usingTCP = false;
-    currentServer = server;
-    currentPort = port;
+    certServer = server;
+    serverPort = port;
     nextRotateKeyTime = QDateTime::currentDateTime().currentMSecsSinceEpoch() + (randombytes_random() % 86400000);
     crypto_box_keypair(pk, sk);
 }
 
-void CertificateResponse::addPadding(QByteArray &msg)
+void CertificateHolder::addPadding(QByteArray &msg)
 {
     quint32 padding = DNSCRYPT_MAX_PADDING;
 
@@ -468,7 +470,7 @@ void CertificateResponse::addPadding(QByteArray &msg)
     }
 }
 
-void CertificateResponse::resendUsingTCP(DNSInfo &dns, QByteArray encryptedRequest, SignedBincertFields signedBincertFields, QString providername, quint8 *nonce, quint8 *sk)
+void CertificateHolder::resendUsingTCP(DNSInfo &dns, QByteArray encryptedRequest, SignedBincertFields signedBincertFields, QString providername, quint8 *nonce, quint8 *sk)
 {
     quint16 prependedPacketLen = encryptedRequest.size();
     prependedPacketLen = qToBigEndian(prependedPacketLen);
@@ -477,20 +479,20 @@ void CertificateResponse::resendUsingTCP(DNSInfo &dns, QByteArray encryptedReque
     EncryptedResponse *er2 = new EncryptedResponse(dns, encryptedRequest, signedBincertFields, providername, nonce, sk);
     if(er2)
     {
-        connect(er2, &EncryptedResponse::decryptedLookupDoneSendResponseNow, this, &CertificateResponse::decryptedLookupDoneSendResponseNow);
-        er2->tcp.connectToHost(currentServer, currentPort);
+        connect(er2, &EncryptedResponse::decryptedLookupDoneSendResponseNow, this, &CertificateHolder::decryptedLookupDoneSendResponseNow);
+        er2->tcp.connectToHost(certServer, serverPort);
     }
 }
 
-void CertificateResponse::certificateVerifiedDoEncryptedLookup(SignedBincertFields bincertFields, QHostAddress serverAddress, quint16 serverPort, bool newKey, DNSInfo dns)
+void CertificateHolder::certificateVerifiedDoEncryptedLookup(SignedBincertFields bincertFields, QHostAddress serverAddress, quint16 serverPort, bool newKey, DNSInfo dns)
 {
     dnsCryptQueryHeader queryHeader;
     QByteArray unencryptedRequest, encryptedRequest, rawEncryptedRequest;
     quint8 nonce[crypto_box_NONCEBYTES] = {0};
 
-    if(serverAddress != currentServer)
+    if(serverAddress != certServer)
     {
-        qDebug() << "Not the right server for certificate:" << serverAddress << "Cert server:" << currentServer;
+        qDebug() << "Not the right server for certificate:" << serverAddress << "Cert server:" << certServer;
         return;
     }
 
@@ -548,8 +550,8 @@ void CertificateResponse::certificateVerifiedDoEncryptedLookup(SignedBincertFiel
     EncryptedResponse *er = new EncryptedResponse(dns, encryptedRequest, bincertFields, providerName, nonce, sk);
     if(er)
     {
-        connect(er, &EncryptedResponse::resendUsingTCP, this, &CertificateResponse::resendUsingTCP);
-        connect(er, &EncryptedResponse::decryptedLookupDoneSendResponseNow, this, &CertificateResponse::decryptedLookupDoneSendResponseNow);
+        connect(er, &EncryptedResponse::resendUsingTCP, this, &CertificateHolder::resendUsingTCP);
+        connect(er, &EncryptedResponse::decryptedLookupDoneSendResponseNow, this, &CertificateHolder::decryptedLookupDoneSendResponseNow);
 
         if(usingTCP)
             er->tcp.connectToHost(serverAddress, serverPort);

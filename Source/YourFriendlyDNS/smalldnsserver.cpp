@@ -94,7 +94,7 @@ void SmallDNSServer::deleteEntriesFromCache(std::vector<ListEntry> entries)
     cachedDNSResponses.erase(cachedDNSResponses.end() - deletionSize, cachedDNSResponses.end());
 }
 
-QHostAddress SmallDNSServer::selectRandomDNSServer()
+QString SmallDNSServer::selectRandomDNSServer()
 {
     bool hasDNSProviders = false;
     for(QString &i : realdns)
@@ -108,8 +108,8 @@ QHostAddress SmallDNSServer::selectRandomDNSServer()
 
     if(!hasDNSProviders)
     {
-        realdns.append("208.67.222.222");
-        realdns.append("208.67.220.220");
+        realdns.append("208.67.222.222:53");
+        realdns.append("208.67.220.220:53");
     }
 
     for(int x = 0; ; x++)
@@ -117,13 +117,13 @@ QHostAddress SmallDNSServer::selectRandomDNSServer()
         QString randomServer = realdns[QRandomGenerator::global()->bounded(realdns.size())];
 
         if(!randomServer.contains("sdns://"))
-            return QHostAddress(randomServer);
+            return randomServer;
 
         if(x > 100000)
             break;
     }
 
-    return QHostAddress("208.67.222.222");
+    return "208.67.222.222:53";
 }
 
 QString SmallDNSServer::selectRandomDNSCryptServer()
@@ -245,14 +245,17 @@ void SmallDNSServer::processDNSRequests()
 
                 if(dnscryptEnabled)
                 {
-                    dnscrypt->setProvider(selectRandomDNSCryptServer());
                     qDebug() << "Making encrypted DNS request type:" << dns.question.qtype << "for domain:" << dns.domainString << "request id:" << dns.header.id << "datagram:" << datagram;
+                    dnscrypt->setProvider(selectRandomDNSCryptServer());
                     dnscrypt->makeEncryptedRequest(dns);
                 }
                 else
                 {
                     qDebug() << "Making DNS request type:" << dns.question.qtype << "for domain:" << dns.domainString << "request id:" << dns.header.id << "datagram:" << datagram;
-                    clientsock.writeDatagram(datagram, selectRandomDNSServer(), 53);
+                    QString server = selectRandomDNSServer();
+                    quint16 serverPort = DNSInfo::extractPort(server);
+                    if(serverPort == 0 || serverPort == 443) serverPort = 53;
+                    clientsock.writeDatagram(datagram, QHostAddress(server), serverPort);
                 }
 
                 InitialResponse *ir = new InitialResponse(dns);

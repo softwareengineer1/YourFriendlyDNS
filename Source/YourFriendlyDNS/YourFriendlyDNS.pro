@@ -35,7 +35,7 @@ INCLUDEPATH += libsodium/include
 #LIBS += $$PWD/libsodium/libsodium.lib
 
 #Uncomment next line when building for Linux/Mac, and for building for Android comment it
-#LIBS += -L $$PWD/libsodium -lsodium
+LIBS += -L $$PWD/libsodium -lsodium
 
 #Uncomment next line when building for iOS (comment others except below)
 #LIBS += -L$$PWD/libsodium-ios/lib -lsodium

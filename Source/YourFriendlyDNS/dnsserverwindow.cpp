@@ -30,6 +30,7 @@ DNSServerWindow::DNSServerWindow(QWidget *parent) : QMainWindow(parent), ui(new 
     ui->setupUi(this);
     qRegisterMetaType<ListEntry>("ListEntry");
     qRegisterMetaType<std::vector<ListEntry>>("std::vector<ListEntry>");
+    qRegisterMetaType<QHostAddress>("QHostAddress");
 
     settingspath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
     QDir d{settingspath};
@@ -64,6 +65,15 @@ DNSServerWindow::DNSServerWindow(QWidget *parent) : QMainWindow(parent), ui(new 
     ui->secondAddButton->setIconSize(QSize(64,64));
     ui->removeButton->setIconSize(QSize(64,64));
     #endif
+    #ifdef Q_OS_MACOS
+    QFont font = ui->label->font();
+    font.setPointSize(11);
+    QList<QWidget*> widgets = this->findChildren<QWidget*>();
+    foreach (QWidget *widget, widgets)
+    {
+        widget->setFont(font);
+    }
+    #endif
 }
 
 DNSServerWindow::~DNSServerWindow()
@@ -80,6 +90,7 @@ void DNSServerWindow::serversInitialized()
     server = AppData::get()->dnsServer;
     httpServer = AppData::get()->httpServer;
     connect(server, SIGNAL(queryRespondedTo(ListEntry)), this, SLOT(queryRespondedTo(ListEntry)));
+    connect(server->dnscrypt, &DNSCrypt::displayLastUsedProvider, this, &DNSServerWindow::displayLastUsedProvider);
     connect(settings, SIGNAL(clearDNSCache()), server, SLOT(clearDNSCache()));
     connect(cacheviewer, &CacheViewer::deleteEntriesFromCache, server, &SmallDNSServer::deleteEntriesFromCache);
 
@@ -87,6 +98,11 @@ void DNSServerWindow::serversInitialized()
     settingsLoad();
     settingsUpdated();
     settings->setiptablesButtonEnabled(false);
+}
+
+void DNSServerWindow::displayLastUsedProvider(QString providerName, QHostAddress server, quint16 port)
+{
+    ui->encEnabled->setText(QString("ENCRYPTION ENABLED! :)\nProvider last used:\n%1\nServer:\n%2:%3").arg(providerName).arg(server.toString()).arg(port));
 }
 
 void DNSServerWindow::androidInit()

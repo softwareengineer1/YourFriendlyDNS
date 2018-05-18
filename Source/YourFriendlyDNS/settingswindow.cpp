@@ -30,6 +30,16 @@ SettingsWindow::SettingsWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui
     ui->setupUi(this);
     indexhtml = new IndexHTML();
     blockmode_localhost = true;
+
+    #ifdef Q_OS_MACOS
+    QFont font = ui->label->font();
+    font.setPointSize(11);
+    QList<QWidget*> widgets = this->findChildren<QWidget*>();
+    foreach (QWidget *widget, widgets)
+    {
+        widget->setFont(font);
+    }
+    #endif
 }
 
 SettingsWindow::~SettingsWindow()

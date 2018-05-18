@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>847</width>
-    <height>452</height>
+    <height>454</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -334,7 +334,7 @@
      <widget class="QCheckBox" name="dnscryptEnabled">
       <property name="font">
        <font>
-        <pointsize>11</pointsize>
+        <pointsize>10</pointsize>
        </font>
       </property>
       <property name="text">
@@ -349,7 +349,7 @@
      <widget class="QCheckBox" name="newKeyPerRequest">
       <property name="font">
        <font>
-        <pointsize>10</pointsize>
+        <pointsize>8</pointsize>
        </font>
       </property>
       <property name="text">
@@ -365,7 +365,7 @@
        </font>
       </property>
       <property name="text">
-       <string>Go Back!</string>
+       <string>Close</string>
       </property>
      </widget>
     </item>

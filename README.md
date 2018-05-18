@@ -1,7 +1,13 @@
 # YourFriendlyDNS
 A really awesome multi-platform (lin,win,mac,android) local caching and proxying dns server!
 
-![YourFriendlyDNS v2.0](YFD-macos-2.0.png)
+![YourFriendlyDNS v2.0](YFD-v2.0.7-macOS.png)
+{Version 2.0.7}
+1. Better handling of multiple DNSCrypt providers
+2. Last DNSC provider used is displayed on the main window
+3. PlainDNS can specify a port now too, ex. 208.67.222.222:53 (when DNSCrypt is disabled)
+4. Fixed too small of a font used on macOS
+ ->Now I’m truly ready to add protocolVersion 2 & 3 support
 
 {==VERSION 2.0==} -> Major milestone!
 1. DNSCrypt now supported! Very happy I made it this far!

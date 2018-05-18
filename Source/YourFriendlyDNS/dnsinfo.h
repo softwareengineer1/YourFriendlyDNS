@@ -103,6 +103,38 @@ public:
         this->sender = info.sender;
         this->senderPort = info.senderPort;
     }
+    static quint16 extractPort(QString &addr)
+    {
+        if(addr.size() == 0) return 0;
+        if(addr.data()[0] == '[')
+        {
+            addr.remove(0, 1);
+            int portOffset = addr.lastIndexOf("]:");
+            if(portOffset != -1)
+            {
+                QString ipv6Port = addr.right(addr.size() - (portOffset + 2));
+                addr.truncate(portOffset);
+                return ipv6Port.toInt();
+            }
+            else
+            {
+                addr.truncate(addr.size() - 1);
+                return 443;
+            }
+        }
+        else
+        {
+            int portOffset = addr.lastIndexOf(":");
+            if(portOffset != -1)
+            {
+                QString ipv4Port = addr.right(addr.size() - (portOffset + 1));
+                addr.truncate(portOffset);
+                return ipv4Port.toInt();
+            }
+            else
+                return 443;
+        }
+    }
     DNS_HEADER header;
     QUESTION question;
     QString domainString;

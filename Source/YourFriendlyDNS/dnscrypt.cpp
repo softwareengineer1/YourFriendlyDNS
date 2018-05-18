@@ -15,13 +15,12 @@ DNSCrypt::DNSCrypt(QObject *parent)
     currentServer = QHostAddress("208.67.220.220");
     currentPort = 443;
     dnsCryptEnabled = true;
-    gotValidCert = newKeyPerRequest = changedProviders = false;
-    providerSet = true;
+    newKeyPerRequest = pendingValidation = false;
 
     if(sodium_init() < 0)
     {
         qDebug() << "[libsodium not initialized] :(";
-        dnsCryptAvailable = false;
+        dnsCryptAvailable = dnsCryptEnabled = false;
     }
     else
     {
@@ -61,9 +60,10 @@ void DNSCrypt::buildTXTRecord(QByteArray &txt)
 
 void DNSCrypt::getValidServerCertificate(DNSInfo &dns)
 {
+    pendingValidation = true;
+
     QByteArray txt;
     buildTXTRecord(txt);
-    request = txt;
 
     udp.writeDatagram(txt, currentServer, currentPort);
     CertificateResponse *cr = new CertificateResponse(dns, providerName, currentServer, currentPort);
@@ -75,29 +75,36 @@ void DNSCrypt::getValidServerCertificate(DNSInfo &dns)
     }
 }
 
+CertificateResponse* DNSCrypt::getCachedCert(QHostAddress server, QString provider)
+{
+    for(CertificateResponse *c : certCache)
+    {
+        if(c->currentServer == server && c->providerName == provider)
+        {
+            return c;
+        }
+    }
+    return nullptr;
+}
+
 void DNSCrypt::makeEncryptedRequest(DNSInfo &dns)
 {
-    if(!providerSet) return;
-    if(!gotValidCert || changedProviders)
-        getValidServerCertificate(dns);
-    else
+    CertificateResponse *c = getCachedCert(currentServer, providerName);
+    if(c != nullptr && !pendingValidation)
     {
-        quint64 now = QDateTime::currentDateTime().toMSecsSinceEpoch();
-        QString nowStr = QString("%1").arg(now);
-        if(nowStr.size() > 10) { nowStr.truncate(10); now = nowStr.toULongLong(); }
-
-        if(now > currentCert.ts_end)
+        currentCert = c->bincertFields;
+        if(getTimeNow() > currentCert.ts_end)
         {
             qDebug() << "Certificate is no longer valid, requesting a fresh one! For provider:" << providerName;
-            gotValidCert = false;
-            lastCertUsed = currentCert;
             getValidServerCertificate(dns);
             return;
         }
 
-        qDebug() << "Alright now let's encrypt :)";
+        qDebug() << "Alright now let's encrypt :) current server:" << currentServer << "current provider:" << providerName;
         emit certificateVerifiedDoEncryptedLookup(currentCert, currentServer, currentPort, newKeyPerRequest, dns);
     }
+    else if(!pendingValidation)
+        getValidServerCertificate(dns);
 }
 
 void DNSCrypt::setProvider(QString dnscryptStamp)
@@ -117,9 +124,17 @@ void DNSCrypt::setProvider(QString dnscryptStamp)
     if(newProvider.providerPubKey.size() == crypto_box_PUBLICKEYBYTES)
         memcpy(providerKey, newProvider.providerPubKey.data(), crypto_box_PUBLICKEYBYTES);
 
-    providerSet = changedProviders = true;
     currentStamp = dnscryptStamp;
     qDebug() << "Provider set!";
+}
+
+quint64 DNSCrypt::getTimeNow()
+{
+    quint64 now = QDateTime::currentDateTime().toMSecsSinceEpoch();
+    QString nowStr = QString("%1").arg(now);
+    if(nowStr.size() > 10)
+        nowStr.truncate(10);
+    return nowStr.toULongLong();
 }
 
 void DNSCrypt::validateCertificates()
@@ -186,7 +201,6 @@ void DNSCrypt::validateCertificates()
                 qDebug() << "Incorrect signature...";
                 continue;
             }
-            continue;
         }
         else
         {
@@ -199,20 +213,15 @@ void DNSCrypt::validateCertificates()
         bincertFields.ts_end = qFromBigEndian(bincertFields.ts_end);
         bincertFields.serial = qFromBigEndian(bincertFields.serial);
 
-        quint64 now = QDateTime::currentDateTime().toMSecsSinceEpoch();
-        QString nowStr = QString("%1").arg(now);
-        if(nowStr.size() > 10) { nowStr.truncate(10); now = nowStr.toULongLong(); }
-        quint64 ts_begin = bincertFields.ts_begin;
-        quint64 ts_end = bincertFields.ts_end;
+        quint64 now = getTimeNow();
+        qDebug() << "Current serial:" << currentCert.serial << "This serial:" << bincertFields.serial;
 
-        qDebug() << "now:" << now << "tsbegin:" << ts_begin << "tsend:" << ts_end;
-
-        if(now < ts_begin)
+        if(now < bincertFields.ts_begin)
         {
             qDebug() << "Certificate is not yet valid";
             continue;
         }
-        else if(now > ts_end)
+        else if(now > bincertFields.ts_end)
         {
             qDebug() << "Certificate is no longer valid";
             continue;
@@ -222,17 +231,12 @@ void DNSCrypt::validateCertificates()
             qDebug() << "Certificates serial is old, old serial:" << bincertFields.serial << "Current serial:" << currentCert.serial;
             continue;
         }
-
-        qDebug() << "Current serial:" << currentCert.serial << "This serial:" << bincertFields.serial;
-
-        lastCertUsed = currentCert;
         currentCert = bincertFields;
-        gotValidCert = true;
-        changedProviders = false;
 
         qDebug() << "Valid cert!!! We have successfully validated the server's certificate, we're good to encrypt!";
-        emit certificateVerifiedDoEncryptedLookup(bincertFields, currentServer, currentPort);
-        emit deleteOldCertificatesForProvider(providerName, bincertFields);
+        emit certificateVerifiedDoEncryptedLookup(bincertFields, currentServer, currentPort, newKeyPerRequest);
+        emit deleteOldCertificatesForProvider(providerName, currentServer, bincertFields);
+        pendingValidation = false;
         return;
     }
 }
@@ -242,23 +246,36 @@ void DNSCrypt::decryptedLookupDoneSendResponseNow2(const QByteArray &response, D
     emit decryptedLookupDoneSendResponseNow(response, dns);
 }
 
-void DNSCrypt::deleteOldCertificatesForProvider(QString provider, SignedBincertFields newestCert)
+void DNSCrypt::deleteOldCertificatesForProvider(QString provider, QHostAddress server, SignedBincertFields newestCert)
 {
     std::vector<int> forDeletion;
+    bool isDuplicate = false;
     for(int i = 0; i < certCache.size(); i++)
     {
-        if((certCache.at(i)->providerName == provider && newestCert.serial > certCache.at(i)->bincertFields.serial))
+        if((certCache.at(i)->providerName == provider && certCache.at(i)->currentServer == server
+            && memcmp(&certCache.at(i)->bincertFields, &newestCert, sizeof(SignedBincertFields)) == 0))
         {
-            qDebug() << "Deleting certificate, for provider:" << provider << "newer serial:" << newestCert.serial << "older:" << certCache.at(i)->bincertFields.serial;
-            forDeletion.push_back(i);
-        }
-    }
+            if(!isDuplicate)
+                isDuplicate = true;
+            else
+            {
+                qDebug() << "Deleting certificate, for provider:" << provider << "is duplicate...";
+                CertificateResponse *cr = certCache.at(i);
+                certCache.remove(i);
+                delete cr;
+                i--;
+                continue;
+            }
 
-    for(int &i : forDeletion)
-    {
-        CertificateResponse *cr = certCache.at(i);
-        certCache.remove(i);
-        delete cr;
+            if(newestCert.serial > certCache.at(i)->bincertFields.serial)
+            {
+                qDebug() << "Deleting certificate, for provider:" << provider << "newer serial:" << newestCert.serial << "older:" << certCache.at(i)->bincertFields.serial;
+                CertificateResponse *cr = certCache.at(i);
+                certCache.remove(i);
+                delete cr;
+                i--;
+            }
+        }
     }
 }
 
@@ -327,8 +344,6 @@ void EncryptedResponse::getAndDecryptResponseTCP()
     packet.remove(0, sizeof responseHeader);
     prependedPacketLen -= sizeof responseHeader;
 
-    qDebug() << "Encrypted message size:" << packet.size() << "data:" << packet;
-
     if(memcmp(&responseHeader.ServerMagic, DNSCRYPT_MAGIC_RESPONSE, sizeof responseHeader.ServerMagic) == 0)
     {
         qDebug() << "We still have the magic over TCP! :)";
@@ -346,16 +361,13 @@ void EncryptedResponse::getAndDecryptResponseTCP()
         QByteArray response;
         if(crypto_box_open_easy((quint8*)decrypted.data(), (quint8*)packet.data(), packet.size(), nonce, bincertFields.server_publickey, sk) != 0)
         {
-            response.append(decrypted);
-            qDebug() << "Decryption failed... :(" << response;
+            qDebug() << "Decryption failed..." << response;
             return endResponse();
         }
 
         response.append(decrypted);
         removePadding(response);
         emit decryptedLookupDoneSendResponseNow(response, respondTo);
-
-        qDebug() << "Returned decrypted response!:" << response;
         return endResponse();
     }
 }
@@ -404,17 +416,15 @@ void EncryptedResponse::getAndDecryptResponse()
             QByteArray response;
             if(crypto_box_open_easy((quint8*)decrypted.data(), (quint8*)datagram.data(), datagram.size(), nonce, bincertFields.server_publickey, sk) != 0)
             {
-                response.append(decrypted);
                 qDebug() << "Not decrypted..." << response;
                 return endResponse();
             }
 
             if(decrypted.size() >= DNS_HEADER_SIZE)
             {
-                DNS_HEADER *dnsh = (DNS_HEADER*)decrypted.data();
-                if(dnsh->tc == 1)
+                if(((DNS_HEADER*)decrypted.data())->tc == 1)
                 {
-                    qDebug() << "TCFlag set / truncated message, using tcp for this request:" << providerName;
+                    qDebug() << "TCFlag set / truncated message, using tcp for this request:" << encRequest;
                     emit resendUsingTCP(respondTo, encRequest, bincertFields, providerName, nonce, sk);
                     return endResponse();
                 }
@@ -423,8 +433,6 @@ void EncryptedResponse::getAndDecryptResponse()
             response.append(decrypted);
             removePadding(response);
             emit decryptedLookupDoneSendResponseNow(response, respondTo);
-
-            qDebug() << "Returned decrypted response!:" << response;
             return endResponse();
         }
     }
@@ -436,10 +444,9 @@ CertificateResponse::CertificateResponse(DNSInfo &dns, QString providername, QHo
     respondTo = dns;
     providerName = providername;
     usingTCP = false;
-    newKeyPerRequest = false;
     currentServer = server;
     currentPort = port;
-
+    nextRotateKeyTime = QDateTime::currentDateTime().currentMSecsSinceEpoch() + (randombytes_random() % 86400000);
     crypto_box_keypair(pk, sk);
 }
 
@@ -454,12 +461,10 @@ void CertificateResponse::addPadding(QByteArray &msg)
 
     qDebug() << padding << "bytes of padding chosen! new msg size:" << msg.size() + padding;
 
-    for(quint32 i = 0; i < padding; i++)
+    msg.append((char)0x80);
+    for(quint32 i = 1; i < padding; i++)
     {
-        if(i == 0)
-            msg.append((char)0x80);
-        else
-            msg.append((char)0);
+        msg.append((char)0);
     }
 }
 
@@ -489,9 +494,18 @@ void CertificateResponse::certificateVerifiedDoEncryptedLookup(SignedBincertFiel
         return;
     }
 
-    if(newKey) newKeyPerRequest = true; else newKeyPerRequest = false;
-    if(newKeyPerRequest)
+    if(newKey)
         crypto_box_keypair(pk, sk);
+    else
+    {
+        quint64 currentTime = QDateTime::currentDateTime().currentMSecsSinceEpoch();
+        if(currentTime > nextRotateKeyTime)
+        {
+            crypto_box_keypair(pk, sk);
+            nextRotateKeyTime = QDateTime::currentDateTime().currentMSecsSinceEpoch() + (randombytes_random() % 86400000);
+            qDebug() << "New key created! Next key rotate time:" << nextRotateKeyTime;
+        }
+    }
 
     this->bincertFields = bincertFields;
     memset(&queryHeader, 0, sizeof queryHeader);

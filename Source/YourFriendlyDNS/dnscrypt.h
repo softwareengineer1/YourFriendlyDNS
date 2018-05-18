@@ -115,7 +115,7 @@ public:
                 return;
             }
 
-            qDebug() << "Provider name:" << providerName << "ProviderPubKey:" << providerPubKey;
+            qDebug() << "Provider name:" << providerName << "ProviderPubKey:" << providerPubKey << "props:" << props;
             if(props & 1) qDebug() << "Provider supports DNSSEC";
             if(props & 2) qDebug() << "Provider doesn't keep logs";
             if(props & 4) qDebug() << "Provider doesn't intentionally block domains";
@@ -133,13 +133,15 @@ private:
     void interpretIPPort()
     {
         if(addr.size() == 0) return;
+        qDebug() << "addr:" << addr;
         if(addr.data()[0] == '[')
         {
             addr.remove(0, 1);
             int portOffset = addr.lastIndexOf("]:");
             if(portOffset != -1)
             {
-                QString ipv6Port = addr.right(portOffset + 2);
+                QString ipv6Port = addr;
+                ipv6Port.remove(0, portOffset + 2);
                 addr.truncate(portOffset);
                 port = ipv6Port.toInt();
             }
@@ -156,7 +158,8 @@ private:
             int portOffset = addr.lastIndexOf(":");
             if(portOffset != -1)
             {
-                QString ipv4Port = addr.right(portOffset + 1);
+                QString ipv4Port = addr;
+                ipv4Port.remove(0, portOffset + 1);
                 addr.truncate(portOffset);
                 port = ipv4Port.toInt();
             }
@@ -205,18 +208,20 @@ public:
     void addPadding(QByteArray &msg);
     SignedBincertFields bincertFields;
     QString providerName;
+    QHostAddress currentServer;
+    quint16 currentPort;
+    quint64 nextRotateKeyTime;
 
 private:
     DNSInfo respondTo;
-    bool usingTCP, newKeyPerRequest;
-    QHostAddress currentServer;
-    quint16 currentPort;
+    bool usingTCP;
+
     quint8 pk[crypto_box_PUBLICKEYBYTES];
     quint8 sk[crypto_box_SECRETKEYBYTES];
 
 signals:
     void decryptedLookupDoneSendResponseNow(QByteArray response, DNSInfo &dns);
-    void deleteOldCertificatesForProvider(QString provider, SignedBincertFields newestCert);
+    void deleteOldCertificatesForProvider(QString provider, QHostAddress server, SignedBincertFields newestCert);
 
 public slots:
     void certificateVerifiedDoEncryptedLookup(SignedBincertFields bincertFields, QHostAddress serverAddress, quint16 serverPort, bool newKey = false, DNSInfo dns = DNSInfo());
@@ -230,8 +235,10 @@ public:
     explicit DNSCrypt(QObject *parent = nullptr);
     void buildTXTRecord(QByteArray &txt);
     void getValidServerCertificate(DNSInfo &dns);
+    CertificateResponse* getCachedCert(QHostAddress server, QString provider);
     void makeEncryptedRequest(DNSInfo &dns);
     void setProvider(QString dnscryptStamp);
+    quint64 getTimeNow();
 
     QUdpSocket udp;
     QByteArray request;
@@ -240,8 +247,8 @@ public:
     quint8 resolverMagic[DNSCRYPT_MAGIC_QUERY_LEN];
     quint16 currentPort;
     QHostAddress currentServer;
-    bool dnsCryptAvailable, dnsCryptEnabled, gotValidCert, providerSet, changedProviders, newKeyPerRequest;
-    SignedBincertFields currentCert, lastCertUsed;
+    bool dnsCryptAvailable, dnsCryptEnabled, newKeyPerRequest, pendingValidation;
+    SignedBincertFields currentCert;
     QVector<CertificateResponse*> certCache;
 
 signals:
@@ -251,7 +258,7 @@ signals:
 public slots:
     void validateCertificates();
     void decryptedLookupDoneSendResponseNow2(const QByteArray &response, DNSInfo &dns);
-    void deleteOldCertificatesForProvider(QString provider, SignedBincertFields newestCert);
+    void deleteOldCertificatesForProvider(QString provider, QHostAddress server, SignedBincertFields newestCert);
 };
 
 

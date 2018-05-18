@@ -65,7 +65,11 @@ void CacheViewer::on_removeButton_clicked()
     for(QTreeWidgetItem *i : selected)
     {
         if(i->text(1) == "A")
-            entries.push_back(ListEntry(i->text(0), 1)); //Reusing the ip field as a record type field just for this
+            entries.push_back(ListEntry(i->text(0), DNS_TYPE_A)); //Reusing the ip field as a record type field just for this
+        else if(i->text(1) == "AAAA")
+            entries.push_back(ListEntry(i->text(0), DNS_TYPE_AAAA));
+        else if(i->text(1) == "TXT")
+            entries.push_back(ListEntry(i->text(0), DNS_TYPE_TXT));
         else
             entries.push_back(ListEntry(i->text(0), i->text(1).toInt()));
     }

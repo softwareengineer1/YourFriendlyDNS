@@ -1,3 +1,3 @@
 #!/bin/bash
 
-sudo ./YourFriendlyDNS.app/Contents/MacOS/YourFriendlyDNS
+sudo ./YourFriendlyDNS-v2*.app/Contents/MacOS/YourFriendlyDNS

@@ -95,11 +95,12 @@ public:
      * x : QByteArray or QString : N bytes (doesn't need to be null terminated and it uses it's size for N bytes)
      */
 
-    template<class... Params> static QByteArray pack(const char *fmt, Params... parameters)
+    template<class... Params> static quint64 pack(QByteArray &buff, const char *fmt, Params... parameters)
     {
         ModernBuffer buffer;
         buffer.pack(fmt, parameters...);
-        return buffer.buf;
+        buff = buffer.buf;
+        return buffer.packedLen;
     }
 
     template<class... Params> quint64 pack(const char *fmt, Params... parameters)

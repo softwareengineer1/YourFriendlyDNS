@@ -73,7 +73,7 @@ void DNSCrypt::getValidServerCertificate(DNSInfo &dns)
     {
         certCache.append(cr);
         connect(this, &DNSCrypt::certificateVerifiedDoEncryptedLookup, cr, &CertificateHolder::certificateVerifiedDoEncryptedLookup);
-        connect(cr, &CertificateHolder::decryptedLookupDoneSendResponseNow, this, &DNSCrypt::decryptedLookupDoneSendResponseNow2);
+        connect(cr, &CertificateHolder::decryptedLookupDoneSendResponseNow, this, &DNSCrypt::decryptedLookupDoneSendResponseNow);
     }
 }
 
@@ -94,26 +94,56 @@ DoTLSResponse::DoTLSResponse(DNSInfo &dns, QObject *parent)
     Q_UNUSED(parent);
     respondTo = dns;
 
-    connect(&tls, SIGNAL(connected()), this, SLOT(writeEncryptedDoTLS()));
+    connect(&tls, SIGNAL(disconnected()), this, SLOT(disconnected()));
+    connect(&tls, SIGNAL(connected()), this, SLOT(startEncryption()));
+    connect(&tls, SIGNAL(encrypted()), this, SLOT(writeEncryptedDoTLS()));
     connect(&tls, SIGNAL(readyRead()), this, SLOT(getAndDecryptResponseDoTLS()));
+    connect(&tls, &QSslSocket::peerVerifyError, this, &DoTLSResponse::verifyError);
+}
+
+void DoTLSResponse::verifyError(const QSslError error)
+{
+    qDebug() << "TLS Error:" << error.errorString();
+}
+
+void DoTLSResponse::disconnected()
+{
+    this->deleteLater();
+}
+
+void DoTLSResponse::startEncryption()
+{
+    if(tls.isEncrypted()) return;
+    qDebug() << "Starting encryption! peerAddress:" << tls.peerAddress() << "port:" << tls.peerPort();
+    tls.startClientEncryption();
 }
 
 void DoTLSResponse::writeEncryptedDoTLS()
 {
+    quint16 prependedLen = respondTo.req.size();
+    prependedLen = qToBigEndian(prependedLen);
+    respondTo.req.prepend((const char*)&prependedLen, 2);
+
     tls.write(respondTo.req);
     qDebug() << "Sent DoTLS request:" << respondTo.req;
+    //cloudflare DoTLS 1.1.1.1:853, and cloudflare DoTLS 1.0.0.1:853
+    //sdns://AwcAAAAAAAAACzEuMS4xLjE6ODUzj6qqqqqqqqqqqqqqqqqqqhC7u7u7u7u7u7u7u7u7u7u7FmNsb3VkZmxhcmUtZG5zLmNvbTo4NTMA
+    //sdns://AwcAAAAAAAAACzEuMC4wLjE6ODUzj6qqqqqqqqqqqqqqqqqqqhC7u7u7u7u7u7u7u7u7u7u7FmNsb3VkZmxhcmUtZG5zLmNvbTo4NTMA
+    //cloudflare 1.1.1.1:853 with empty ip field and 1dot1dot1dot1.cloudflare-dns.com:853 hostname and port provided
+    //sdns://AwcAAAAAAAAAAI-qqqqqqqqqqqqqqqqqqqoQu7u7u7u7u7u7u7u7u7u7uyQxZG90MWRvdDFkb3QxLmNsb3VkZmxhcmUtZG5zLmNvbTo4NTMA
+    //cloudflare 1.1.1.1:853 with just port 853 in the ip field and 1dot1dot1dot1.cloudflare-dns.com hostname provided
+    //sdns://AwcAAAAAAAAAAzg1M4-qqqqqqqqqqqqqqqqqqqoQu7u7u7u7u7u7u7u7u7u7uyAxZG90MWRvdDFkb3QxLmNsb3VkZmxhcmUtZG5zLmNvbQA
 }
 
 void DoTLSResponse::getAndDecryptResponseDoTLS()
 {
     QByteArray decryptedResponse = tls.readAll(); //Well, TLS decrypts it for us...
     qDebug() << "Received DoTLS response:" << decryptedResponse;
-    if(decryptedResponse.size() > 0)
+    if(decryptedResponse.size() > 2)
     {
+        decryptedResponse.remove(0, 2);
         emit decryptedLookupDoneSendResponseNow(decryptedResponse, respondTo);
     }
-
-    this->deleteLater();
 }
 
 DoHResponse::DoHResponse(DNSInfo &dns, QByteArray dohRequest, QObject *parent)
@@ -122,8 +152,28 @@ DoHResponse::DoHResponse(DNSInfo &dns, QByteArray dohRequest, QObject *parent)
     respondTo = dns;
     request = dohRequest;
 
-    connect(&tls, SIGNAL(connected()), this, SLOT(writeEncryptedDoH()));
+    connect(&tls, SIGNAL(disconnected()), this, SLOT(deleteLater()));
+    connect(&tls, SIGNAL(connected()), this, SLOT(startEncryption()));
+    connect(&tls, SIGNAL(encrypted()), this, SLOT(writeEncryptedDoH()));
     connect(&tls, SIGNAL(readyRead()), this, SLOT(getAndDecryptResponseDoH()));
+    connect(&tls, &QSslSocket::peerVerifyError, this, &DoHResponse::verifyError);
+}
+
+void DoHResponse::verifyError(const QSslError error)
+{
+    qDebug() << "TLS Error:" << error.errorString();
+}
+
+void DoHResponse::disconnected()
+{
+    this->deleteLater();
+}
+
+void DoHResponse::startEncryption()
+{
+    if(tls.isEncrypted()) return;
+    qDebug() << "Starting encryption! peerAddress:" << tls.peerAddress() << "port:" << tls.peerPort();
+    tls.startClientEncryption();
 }
 
 void DoHResponse::writeEncryptedDoH()
@@ -146,8 +196,6 @@ void DoHResponse::getAndDecryptResponseDoH()
             emit decryptedLookupDoneSendResponseNow(decryptedResponse, respondTo);
         }
     }
-
-    this->deleteLater();
 }
 
 void DNSCrypt::sendDoH(DNSInfo &dns)
@@ -168,7 +216,11 @@ Content-Length: %4)";
     if(doh)
     {
         connect(doh, &DoHResponse::decryptedLookupDoneSendResponseNow, this, &DNSCrypt::decryptedLookupDoneSendResponseNow);
-        doh->tls.connectToHostEncrypted(hostname, currentPort);
+        doh->tls.setPeerVerifyName(hostname);
+        if(currentServer.isNull())
+            doh->tls.connectToHostEncrypted(hostname, currentPort);
+        else
+            doh->tls.connectToHost(currentServer, currentPort);
     }
 }
 
@@ -177,8 +229,14 @@ void DNSCrypt::sendDoTLS(DNSInfo &dns)
     DoTLSResponse *doTLS = new DoTLSResponse(dns);
     if(doTLS)
     {
+        qDebug() << "Sending over TLS:" << dns.req << "to host:" << hostname << currentServer << "port:" << currentPort;
         connect(doTLS, &DoTLSResponse::decryptedLookupDoneSendResponseNow, this, &DNSCrypt::decryptedLookupDoneSendResponseNow);
-        doTLS->tls.connectToHostEncrypted(hostname, currentPort);
+
+        doTLS->tls.setPeerVerifyName(hostname);
+        if(currentServer.isNull())
+            doTLS->tls.connectToHostEncrypted(hostname, currentPort);
+        else
+            doTLS->tls.connectToHost(currentServer, currentPort);
     }
 }
 
@@ -221,8 +279,20 @@ void DNSCrypt::setProvider(QString dnscryptStamp)
     protocolVersion = newProvider.protocolVersion;
     if(protocolVersion == 0) return;
 
-    currentServer = QHostAddress(newProvider.addr);
+    hostname = newProvider.hostname;
+    path = newProvider.path;
     currentPort = newProvider.port;
+
+    //Because of stamp specification note, I resolve the ip to use from hostname if addr is empty or just a port (I take the port and set it empty in that case):
+    //"addr is the IP address of the server. It can be an empty string, or just a port number. In that case, the host name will be resolved to an IP address using another resolver."
+    if(newProvider.addr.size() == 0)
+    {
+        //Note: connectToHostEncrypted with hostname is used instead of connectToHost with ip when currentServer is null, which results in resolving it automatically,
+        //and using this server itself if system dns is set to use it.
+        currentServer.clear();
+    }
+    else
+        currentServer = QHostAddress(newProvider.addr);
 
     if(protocolVersion == 1)
     {
@@ -232,17 +302,8 @@ void DNSCrypt::setProvider(QString dnscryptStamp)
 
         emit displayLastUsedProvider(newProvider.props, providerName, currentServer, currentPort);
     }
-    else if(protocolVersion == 2)
+    else if(protocolVersion == 2 || protocolVersion == 3)
     {
-        hostname = newProvider.hostname;
-        path = newProvider.path;
-
-        emit displayLastUsedProvider(newProvider.props, hostname, currentServer, currentPort);
-    }
-    else if(protocolVersion == 3)
-    {
-        hostname = newProvider.hostname;
-
         emit displayLastUsedProvider(newProvider.props, hostname, currentServer, currentPort);
     }
 
@@ -363,11 +424,6 @@ void DNSCrypt::validateCertificates()
     }
 }
 
-void DNSCrypt::decryptedLookupDoneSendResponseNow2(const QByteArray &response, DNSInfo &dns)
-{
-    emit decryptedLookupDoneSendResponseNow(response, dns);
-}
-
 void DNSCrypt::deleteOldCertificatesForProvider(QString provider, QHostAddress server, SignedBincertFields newestCert)
 {
     bool isDuplicate = false;
@@ -414,9 +470,17 @@ EncryptedResponse::EncryptedResponse(DNSInfo &dns, QByteArray encryptedRequest, 
     memcpy(this->sk, sk, crypto_box_SECRETKEYBYTES);
     memcpy(this->nonce, nonce, crypto_box_NONCEBYTES);
 
+    connect(&tcp, SIGNAL(disconnected()), this, SLOT(deleteLater()));
     connect(&tcp, SIGNAL(connected()), this, SLOT(writeEncryptedRequestTCP()));
     connect(&tcp, SIGNAL(readyRead()), this, SLOT(getAndDecryptResponseTCP()));
     connect(&udp, SIGNAL(readyRead()), this, SLOT(getAndDecryptResponse()));
+    connect(&udp, QOverload<QAbstractSocket::SocketError>::of(&QAbstractSocket::error), this, &EncryptedResponse::socketError);
+}
+
+void EncryptedResponse::socketError(QAbstractSocket::SocketError error)
+{
+    qDebug() << "Socket Error:" << error;
+    endResponse();
 }
 
 void EncryptedResponse::endResponse()
@@ -559,6 +623,7 @@ void EncryptedResponse::getAndDecryptResponse()
             return endResponse();
         }
     }
+    return endResponse();
 }
 
 CertificateHolder::CertificateHolder(DNSInfo &dns, QString providername, QHostAddress server, quint16 port, QObject *parent)

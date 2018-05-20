@@ -2,6 +2,7 @@
 #define DNSCRYPT_H
 
 #include <QHostAddress>
+#include <QHostInfo>
 #include <QSslSocket>
 #include <QUdpSocket>
 #include <QTcpSocket>
@@ -185,6 +186,9 @@ signals:
     void decryptedLookupDoneSendResponseNow(QByteArray response, DNSInfo &dns);
 
 public slots:
+    void verifyError(const QSslError error);
+    void disconnected();
+    void startEncryption();
     void writeEncryptedDoTLS();
     void getAndDecryptResponseDoTLS();
 };
@@ -203,6 +207,9 @@ signals:
     void decryptedLookupDoneSendResponseNow(QByteArray response, DNSInfo &dns);
 
 public slots:
+    void verifyError(const QSslError error);
+    void disconnected();
+    void startEncryption();
     void writeEncryptedDoH();
     void getAndDecryptResponseDoH();
 };
@@ -231,6 +238,7 @@ signals:
     void resendUsingTCP(DNSInfo &dns, QByteArray encryptedRequest, SignedBincertFields signedBincertFields, QString providername, quint8 *nonce, quint8 *sk);
 
 public slots:
+    void socketError(QAbstractSocket::SocketError error);
     void writeEncryptedRequestTCP();
     void getAndDecryptResponseTCP();
     void getAndDecryptResponse();
@@ -298,7 +306,6 @@ signals:
 
 public slots:
     void validateCertificates();
-    void decryptedLookupDoneSendResponseNow2(const QByteArray &response, DNSInfo &dns);
     void deleteOldCertificatesForProvider(QString provider, QHostAddress server, SignedBincertFields newestCert);
 };
 

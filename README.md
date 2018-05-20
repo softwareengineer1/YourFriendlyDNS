@@ -1,7 +1,15 @@
 # YourFriendlyDNS
 A really awesome multi-platform (lin,win,mac,android) local caching and proxying dns server!
 
-![YourFriendlyDNS v2.0](YFD-v2.0.7-macOS.png)
+![YourFriendlyDNS v2.0](YFD-v2.1.1-macOS.png)
+{Version 2.1.1}
+1. DNS over TLS fixed and working properly now!
+-> The provided hostname doesn’t necessarily resolve to the right ip to use for DoTLS. Since QSSlSocket inherits from QTcpSocket, I can therefore use connectToHost rather than connectToHostEncrypted (which doesn’t take an ip, only a hostname) and use startEncryption function manually. Using the provided IP address in the stamp if there is one now correctly connects to the DoTLS provider! Also added the 2 byte length  prefix that I forgot initially. So now both DNS over HTTPS and DNS over TLS work! :)
+2. Like noted in the dnscrypt stamp specification, if there is no IP address provided or its just a port, it’ll use the hostname instead (a stamp like this should indicate the hostname will resolve to the correct ip to use) and use the port from either place it’s located. So even in that edge case it’ll still work properly!
+3. Alright what else is there to do now? Perhaps have a list of DNSCrypt provider sources to auto download from (might as well since we have a TLS stack now) and let you easily select and add them not requiring manual copying and pasting anymore. Also an inbuilt stamp converter to create stamps from specified server info, or vice versa. (Like dnscrypt.info’s but also doing protocol v3 [I had to manually change the start to “sdns://Aw” (protocol version 3) in my testing of v3 servers])
+4. Looking good now! :)
+
+
 {Version 2.1}
 1. DNS over HTTPS / DoH support added!
 2. DNS over TLS / DoTLS support added!

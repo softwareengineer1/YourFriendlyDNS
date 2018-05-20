@@ -31,6 +31,7 @@ SmallDNSServer::SmallDNSServer(QObject *parent)
     cachedMinutesValid = 7;
     dnsTTL = 25200;
     dnscryptEnabled = true; //Encryption now enabled by default (and there's no fallback to plaintext dns either for security, you have to manually disable it to use regular dns again)
+    dedicatedDNSCrypter = "sdns://AQAAAAAAAAAADjIwOC42Ny4yMjAuMjIwILc1EUAgbyJdPivYItf9aR6hwzzI1maNDL4Ev6vKQ_t5GzIuZG5zY3J5cHQtY2VydC5vcGVuZG5zLmNvbQ";
 
     whitelistmode = initialMode = blockmode_returnlocalhost = true;
     //default is whitelist mode, with just these three entries to get you started!
@@ -92,6 +93,24 @@ void SmallDNSServer::deleteEntriesFromCache(std::vector<ListEntry> entries)
 
     qDebug() << "Deleting...";
     cachedDNSResponses.erase(cachedDNSResponses.end() - deletionSize, cachedDNSResponses.end());
+}
+
+void SmallDNSServer::determineDoHDoTLSProviders()
+{
+    //When using only DoH and DoTLS (v2, v3) providers, a dedicated v1 DNSCrypt provider is used to resolve their hosts,
+    //then DoH and DoTLS providers can be used without any issue.
+    //QSslSocket::connectToHostEncrypted only takes a hostname, and when YourFriendlyDNS is set as system dns
+    //it uses this server to try and resolve it, which I solved by using a dedicated v1 provider when that's happening.
+    v2and3Providers.clear();
+    for(QString &p : realdns)
+    {
+        if(p.contains("sdns://"))
+        {
+            DNSCryptProvider provider(p.toUtf8());
+            if(provider.protocolVersion == 2 || provider.protocolVersion == 3)
+                v2and3Providers.append(provider.hostname);
+        }
+    }
 }
 
 QString SmallDNSServer::selectRandomDNSServer()
@@ -178,7 +197,7 @@ void SmallDNSServer::processDNSRequests()
         parseRequest(datagram, dns);
         if(!dns.isValid) continue;
 
-        bool shouldCacheDomain;
+        bool shouldCacheDomain, useDedicatedDNSCryptProviderToResolveV2And3Hosts = false;
         quint32 customIP = ipToRespondWith;
         std::string domain = (char*)dns.domainString.toUtf8().data();
         if(whitelistmode)
@@ -209,6 +228,15 @@ void SmallDNSServer::processDNSRequests()
         {
             //Trying to exclude local hostnames from leaking
             shouldCacheDomain = (dns.domainString.contains(".") && !dns.domainString.endsWith("in-addr.arpa") && !dns.domainString.endsWith(".lan"));
+
+            for(QString &provider : v2and3Providers)
+            {
+                if(provider == dns.domainString)
+                {
+                    useDedicatedDNSCryptProviderToResolveV2And3Hosts = true;
+                    break;
+                }
+            }
         }
 
         //Rewritten and shortened
@@ -246,7 +274,14 @@ void SmallDNSServer::processDNSRequests()
                 if(dnscryptEnabled)
                 {
                     qDebug() << "Making encrypted DNS request type:" << dns.question.qtype << "for domain:" << dns.domainString << "request id:" << dns.header.id << "datagram:" << datagram;
-                    dnscrypt->setProvider(selectRandomDNSCryptServer());
+                    if(useDedicatedDNSCryptProviderToResolveV2And3Hosts)
+                    {
+                        dnscrypt->setProvider(dedicatedDNSCrypter);
+                        qDebug() << "Using dedicated DNSCrypt provider to resolve DoH/DoTLS provider's host:" << dns.domainString;
+                    }
+                    else
+                        dnscrypt->setProvider(selectRandomDNSCryptServer());
+
                     dnscrypt->makeEncryptedRequest(dns);
                 }
                 else

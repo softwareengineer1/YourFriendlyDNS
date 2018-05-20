@@ -100,9 +100,13 @@ void DNSServerWindow::serversInitialized()
     settings->setiptablesButtonEnabled(false);
 }
 
-void DNSServerWindow::displayLastUsedProvider(QString providerName, QHostAddress server, quint16 port)
+void DNSServerWindow::displayLastUsedProvider(quint64 props, QString providerName, QHostAddress server, quint16 port)
 {
-    ui->encEnabled->setText(QString("ENCRYPTION ENABLED! :)\nProvider last used:\n%1\nServer:\n%2:%3").arg(providerName).arg(server.toString()).arg(port));
+    QString Props;
+    if(props & 2) Props += "\nDoesn't log";
+    if(props & 4) Props += "\nDoesn't filter";
+    if(props & 1) Props += "\nSupports DNSSEC";
+    ui->encEnabled->setText(QString("ENCRYPTION ENABLED! :)\nProvider last used:\n%1\n%2:%3%4").arg(providerName).arg(server.toString()).arg(port).arg(Props));
 }
 
 void DNSServerWindow::androidInit()
@@ -165,6 +169,8 @@ void DNSServerWindow::settingsUpdated()
         server->ipToRespondWith = QHostAddress(settings->getRespondingIP()).toIPv4Address();
         server->cachedMinutesValid = settings->getCachedMinutesValid();
         server->realdns = settings->returnRealDNSServers();
+        server->dedicatedDNSCrypter = settings->returnDedicatedDNSCrypter();
+        server->determineDoHDoTLSProviders();
         server->dnsTTL = settings->dnsTTL;
         server->autoTTL = settings->autoTTL;
     }
@@ -307,10 +313,11 @@ bool DNSServerWindow::settingsSave()
     if(file.open(QFile::WriteOnly))
     {
         QJsonObject json;
-        json["version"] = "2.0";
+        json["version"] = "2.1";
         server->dnscryptEnabled = settings->getDNSCryptEnabled();
         json["dnscryptEnabled"] = server->dnscryptEnabled;
         server->dnscrypt->newKeyPerRequest = settings->getNewKeyPerRequestEnabled();
+        json["dedicatedDNSCrypter"] = server->dedicatedDNSCrypter;
         json["newKeyPerRequest"] = server->dnscrypt->newKeyPerRequest;
         json["initialMode"] = server->initialMode;
         json["whitelistmode"] = server->whitelistmode;
@@ -407,6 +414,10 @@ bool DNSServerWindow::settingsLoad()
     {
         server->dnscryptEnabled = json["dnscryptEnabled"].toBool();
         settings->setDNSCryptEnabled(server->dnscryptEnabled);
+    }
+    if(json.contains("dedicatedDNSCrypter") && json["dedicatedDNSCrypter"].isString())
+    {
+        server->dedicatedDNSCrypter = json["dedicatedDNSCrypter"].toString();
     }
     if(json.contains("newKeyPerRequest") && json["newKeyPerRequest"].isBool())
     {

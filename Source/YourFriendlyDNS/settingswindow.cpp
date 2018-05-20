@@ -48,6 +48,11 @@ SettingsWindow::~SettingsWindow()
     delete ui;
 }
 
+QString SettingsWindow::returnDedicatedDNSCrypter()
+{
+    return ui->dedicatedDNSCrypt->text();
+}
+
 QVector<QString> SettingsWindow::returnRealDNSServers()
 {
      QVector<QString> dnsservers;

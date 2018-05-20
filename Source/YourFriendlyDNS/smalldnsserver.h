@@ -78,11 +78,13 @@ public:
     explicit SmallDNSServer(QObject *parent = nullptr);
     bool startServer(QHostAddress address = QHostAddress::AnyIPv4, quint16 port = 53, bool reuse = false);
     QString getDomainString(const QByteArray &dnsmessage, DNSInfo &dns);
+    void determineDoHDoTLSProviders();
 
     bool whitelistmode, blockmode_returnlocalhost, initialMode, autoTTL, dnscryptEnabled;
     quint32 ipToRespondWith, cachedMinutesValid, dnsTTL;
+    QString dedicatedDNSCrypter;
     QVector<ListEntry> whitelist,blacklist;
-    QVector<QString> realdns;
+    QVector<QString> realdns, v2and3Providers;
     QVector<quint32> listeningIPs;
     std::vector<DNSInfo> cachedDNSResponses;
     QUdpSocket serversock;

@@ -14,8 +14,10 @@ DNSCrypt::DNSCrypt(QObject *parent)
     memset(&currentCert, 0, sizeof currentCert);
     currentServer = QHostAddress("208.67.220.220");
     currentPort = 443;
+    protocolVersion = 0;
     dnsCryptEnabled = true;
     newKeyPerRequest = pendingValidation = false;
+    userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.12; rv:60.0) Gecko/20100101 Firefox/60.0";
 
     if(sodium_init() < 0)
     {
@@ -87,24 +89,128 @@ CertificateHolder *DNSCrypt::getCachedCert(QHostAddress server, QString provider
     return nullptr;
 }
 
+DoTLSResponse::DoTLSResponse(DNSInfo &dns, QObject *parent)
+{
+    Q_UNUSED(parent);
+    respondTo = dns;
+
+    connect(&tls, SIGNAL(connected()), this, SLOT(writeEncryptedDoTLS()));
+    connect(&tls, SIGNAL(readyRead()), this, SLOT(getAndDecryptResponseDoTLS()));
+}
+
+void DoTLSResponse::writeEncryptedDoTLS()
+{
+    tls.write(respondTo.req);
+    qDebug() << "Sent DoTLS request:" << respondTo.req;
+}
+
+void DoTLSResponse::getAndDecryptResponseDoTLS()
+{
+    QByteArray decryptedResponse = tls.readAll(); //Well, TLS decrypts it for us...
+    qDebug() << "Received DoTLS response:" << decryptedResponse;
+    if(decryptedResponse.size() > 0)
+    {
+        emit decryptedLookupDoneSendResponseNow(decryptedResponse, respondTo);
+    }
+
+    this->deleteLater();
+}
+
+DoHResponse::DoHResponse(DNSInfo &dns, QByteArray dohRequest, QObject *parent)
+{
+    Q_UNUSED(parent);
+    respondTo = dns;
+    request = dohRequest;
+
+    connect(&tls, SIGNAL(connected()), this, SLOT(writeEncryptedDoH()));
+    connect(&tls, SIGNAL(readyRead()), this, SLOT(getAndDecryptResponseDoH()));
+}
+
+void DoHResponse::writeEncryptedDoH()
+{
+    tls.write(request);
+    qDebug() << "Sent DoH request:" << request;
+}
+
+void DoHResponse::getAndDecryptResponseDoH()
+{
+    QByteArray decryptedResponse = tls.readAll(); //Well, TLS decrypts it for us...
+    qDebug() << "Received DoH response:" << decryptedResponse;
+    if(decryptedResponse.size() > 0 && decryptedResponse.contains("200 OK"))
+    {
+        int contentPos = decryptedResponse.lastIndexOf("\r\n\r\n");
+        if(contentPos != -1)
+        {
+            decryptedResponse.remove(0, contentPos + 4);
+            qDebug() << "Just the dns message:" << decryptedResponse;
+            emit decryptedLookupDoneSendResponseNow(decryptedResponse, respondTo);
+        }
+    }
+
+    this->deleteLater();
+}
+
+void DNSCrypt::sendDoH(DNSInfo &dns)
+{
+    QByteArray dohRequest;
+    QString post_request_header=R"(POST %1 HTTP/1.1
+Host: %2
+User-Agent: %3
+Accept: application/dns-udpwireformat
+Content-Type: application/dns-udpwireformat
+Content-Length: %4)";
+    post_request_header += "\r\n\r\n";
+
+    dohRequest.append(post_request_header.arg(path).arg(hostname).arg(userAgent).arg(dns.req.size()));
+    dohRequest.append(dns.req);
+
+    DoHResponse *doh = new DoHResponse(dns, dohRequest);
+    if(doh)
+    {
+        connect(doh, &DoHResponse::decryptedLookupDoneSendResponseNow, this, &DNSCrypt::decryptedLookupDoneSendResponseNow);
+        doh->tls.connectToHostEncrypted(hostname, currentPort);
+    }
+}
+
+void DNSCrypt::sendDoTLS(DNSInfo &dns)
+{
+    DoTLSResponse *doTLS = new DoTLSResponse(dns);
+    if(doTLS)
+    {
+        connect(doTLS, &DoTLSResponse::decryptedLookupDoneSendResponseNow, this, &DNSCrypt::decryptedLookupDoneSendResponseNow);
+        doTLS->tls.connectToHostEncrypted(hostname, currentPort);
+    }
+}
+
 void DNSCrypt::makeEncryptedRequest(DNSInfo &dns)
 {
-    CertificateHolder *c = getCachedCert(currentServer, providerName);
-    if(c != nullptr && !pendingValidation)
+    if(protocolVersion == 1)
     {
-        currentCert = c->bincertFields;
-        if(getTimeNow() > currentCert.ts_end)
+        CertificateHolder *c = getCachedCert(currentServer, providerName);
+        if(c != nullptr && !pendingValidation)
         {
-            qDebug() << "Certificate is no longer valid, requesting a fresh one! For provider:" << providerName;
-            getValidServerCertificate(dns);
-            return;
-        }
+            currentCert = c->bincertFields;
+            if(getTimeNow() > currentCert.ts_end)
+            {
+                qDebug() << "Certificate is no longer valid, requesting a fresh one! For provider:" << providerName;
+                getValidServerCertificate(dns);
+                return;
+            }
 
-        qDebug() << "Alright now let's encrypt :) current server:" << currentServer << "current provider:" << providerName;
-        emit certificateVerifiedDoEncryptedLookup(currentCert, currentServer, currentPort, newKeyPerRequest, dns);
+            qDebug() << "Alright now let's encrypt :) current server:" << currentServer << "current provider:" << providerName;
+            emit certificateVerifiedDoEncryptedLookup(currentCert, currentServer, currentPort, newKeyPerRequest, dns);
+        }
+        else if(!pendingValidation)
+            getValidServerCertificate(dns);
     }
-    else if(!pendingValidation)
-        getValidServerCertificate(dns);
+    else if(protocolVersion == 2)
+    {
+        sendDoH(dns);
+    }
+    else if(protocolVersion == 3)
+    {
+        sendDoTLS(dns);
+    }
 }
 
 void DNSCrypt::setProvider(QString dnscryptStamp)
@@ -112,20 +218,35 @@ void DNSCrypt::setProvider(QString dnscryptStamp)
     if(dnscryptStamp == currentStamp) return;
 
     DNSCryptProvider newProvider(dnscryptStamp.toUtf8());
-    if(newProvider.protocolVersion == 2 || newProvider.protocolVersion == 3)
-    {
-        qDebug() << "I don't support DNS Over HTTP2 or DNS over TLS just yet...";
-        return;
-    }
+    protocolVersion = newProvider.protocolVersion;
+    if(protocolVersion == 0) return;
 
     currentServer = QHostAddress(newProvider.addr);
     currentPort = newProvider.port;
-    providerName = newProvider.providerName;
-    if(newProvider.providerPubKey.size() == crypto_box_PUBLICKEYBYTES)
-        memcpy(providerKey, newProvider.providerPubKey.data(), crypto_box_PUBLICKEYBYTES);
+
+    if(protocolVersion == 1)
+    {
+        providerName = newProvider.providerName;
+        if(newProvider.providerPubKey.size() == crypto_box_PUBLICKEYBYTES)
+            memcpy(providerKey, newProvider.providerPubKey.data(), crypto_box_PUBLICKEYBYTES);
+
+        emit displayLastUsedProvider(newProvider.props, providerName, currentServer, currentPort);
+    }
+    else if(protocolVersion == 2)
+    {
+        hostname = newProvider.hostname;
+        path = newProvider.path;
+
+        emit displayLastUsedProvider(newProvider.props, hostname, currentServer, currentPort);
+    }
+    else if(protocolVersion == 3)
+    {
+        hostname = newProvider.hostname;
+
+        emit displayLastUsedProvider(newProvider.props, hostname, currentServer, currentPort);
+    }
 
     currentStamp = dnscryptStamp;
-    emit displayLastUsedProvider(providerName, currentServer, currentPort);
     qDebug() << "Provider set!";
 }
 

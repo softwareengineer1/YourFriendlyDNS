@@ -2,6 +2,14 @@
 A really awesome multi-platform (lin,win,mac,android) local caching and proxying dns server!
 
 ![YourFriendlyDNS v2.0](YFD-v2.0.7-macOS.png)
+{Version 2.1}
+1. DNS over HTTPS / DoH support added!
+2. DNS over TLS / DoTLS support added!
+Note: If using DoH and/or DoTLS providers you should set a dedicated v1 DNSCrypt provider to use to resolve the hosts of DoH and DoTLS providers themselves! :)
+3. Props info now displayed as well for last used provider
+4. Look for the new version 2.1 on the releases page shortly and checkout the new code now! :)
+
+
 {Version 2.0.7}
 1. Better handling of multiple DNSCrypt providers
 2. Last DNSC provider used is displayed on the main window

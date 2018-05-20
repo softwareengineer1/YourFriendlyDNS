@@ -80,6 +80,7 @@ public:
     explicit SettingsWindow(QWidget *parent = 0);
     ~SettingsWindow();
     IndexHTML *indexhtml;
+    QString returnDedicatedDNSCrypter();
     QVector<QString> returnRealDNSServers();
     void clearDNSServers();
     bool isExisting(const QString &dns);
@@ -129,11 +130,8 @@ private slots:
     void on_dnsTTL_textChanged(const QString &arg1);
     void on_sameAsCachedBox_stateChanged(int arg1);
     void on_cacheValidMinutes_textChanged(const QString &arg1);
-
     void on_dnscryptEnabled_stateChanged(int arg1);
-
     void on_newKeyPerRequest_stateChanged(int arg1);
-
     void on_backButton_clicked();
 
 private:

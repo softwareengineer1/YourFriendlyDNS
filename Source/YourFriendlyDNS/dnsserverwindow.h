@@ -53,7 +53,7 @@ signals:
 
 public slots:
     void serversInitialized();
-    void displayLastUsedProvider(QString providerName, QHostAddress server, quint16 port);
+    void displayLastUsedProvider(quint64 props, QString providerName, QHostAddress server, quint16 port);
     void androidInit();
     void htmlChanged(QString &html);
     void setIPToFirstListening();

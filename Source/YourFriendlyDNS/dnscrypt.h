@@ -2,6 +2,7 @@
 #define DNSCRYPT_H
 
 #include <QHostAddress>
+#include <QSslSocket>
 #include <QUdpSocket>
 #include <QTcpSocket>
 #include <QtEndian>
@@ -83,6 +84,9 @@ public:
             qDebug() << sdns;
             sdns.remove(0, 7);
 
+            quint16 port2 = 0;
+            quint8 hashLen;
+            QByteArray hash;
             QByteArray unbased = QByteArray::fromBase64(sdns, QByteArray::Base64UrlEncoding);
 
             //Got to interpret it differently based on the protocol version though
@@ -94,9 +98,11 @@ public:
                 buffer.unpack("z", &addr);
                 qDebug() << "Protocol version 0x0000 read -> Plain DNS! You should enter it in the app plainly too, addr:" << addr << "props:" << props;
                 return;
+
             case 1:
                 buffer.unpack("zzz", &addr, &providerPubKey, &providerName);
                 qDebug() << "Protocol version 0x0001 read -> DNSCrypt!";
+                qDebug() << "Provider name:" << providerName << "ProviderPubKey:" << providerPubKey << "props:" << props;
 
                 if(providerPubKey.size() != crypto_box_PUBLICKEYBYTES)
                 {
@@ -104,32 +110,101 @@ public:
                     return;
                 }
                 break;
+
             case 2:
-                qDebug() << "Protocol version 0x0002 read -> DNS over HTTP2, coming soon!";
-                return;
+                buffer.unpack("zB", &addr, &hashLen);
+                while(hashLen & 0x80)
+                {
+                    hashLen &= ~0x80;
+                    buffer.unpack(QString("[%1]").arg(hashLen).toStdString().c_str(), &hash);
+                    hashes.append(hash);
+                    qDebug() << "hash:" << hash << "hashLen:" << hashLen;
+                    buffer.unpack("B", &hashLen);
+                }
+                buffer.unpack(QString("[%1]").arg(hashLen).toStdString().c_str(), &hash);
+                hashes.append(hash);
+                qDebug() << "hash:" << hash << "hashLen:" << hashLen;
+
+                buffer.unpack("zz", &hostname, &path);
+                port2 = DNSInfo::extractPort(hostname);
+                qDebug() << "Protocol version 0x0002 read -> DNS over HTTPS!";
+                qDebug() << "Host:" << hostname << "Path:" << path;
+                break;
+
             case 3:
-                qDebug() << "Protocol version 0x0003 read -> DNS over TLS, coming soon!";
-                return;
+                buffer.unpack("zB", &addr, &hashLen);
+                while(hashLen & 0x80)
+                {
+                    hashLen &= ~0x80;
+                    buffer.unpack(QString("[%1]").arg(hashLen).toStdString().c_str(), &hash);
+                    hashes.append(hash);
+                    buffer.unpack("B", &hashLen);
+                }
+                buffer.unpack(QString("[%1]").arg(hashLen).toStdString().c_str(), &hash);
+                hashes.append(hash);
+
+                buffer.unpack("z", &hostname);
+                port2 = DNSInfo::extractPort(hostname);
+                qDebug() << "Protocol version 0x0003 read -> DNS over TLS!";
+                qDebug() << "Host:" << hostname;
+                break;
+
             default:
                 qDebug() << "Unknown and unsupported protocol version...";
-                return;
+                break;
             }
 
             props = qToBigEndian(props);
-            qDebug() << "Provider name:" << providerName << "ProviderPubKey:" << providerPubKey << "props:" << props;
             if(props & 1) qDebug() << "Provider supports DNSSEC";
             if(props & 2) qDebug() << "Provider doesn't keep logs";
             if(props & 4) qDebug() << "Provider doesn't intentionally block domains";
 
             port = DNSInfo::extractPort(addr);
+            if(port == 443 && port2 != 0) port = port2;
             qDebug() << "Provider using address:" << addr << "and port:" << port;
         }
     }
     quint8 protocolVersion;
     quint16 port;
     quint64 props;
-    QString providerName, addr;
-    QByteArray providerPubKey;    
+    QString providerName, hostname, path, addr;
+    QByteArray providerPubKey;
+    QVector<QByteArray> hashes;
+};
+
+class DoTLSResponse : public QObject
+{
+    Q_OBJECT
+public:
+    explicit DoTLSResponse(DNSInfo &dns, QObject *parent = nullptr);
+
+    DNSInfo respondTo;
+    QSslSocket tls;
+
+signals:
+    void decryptedLookupDoneSendResponseNow(QByteArray response, DNSInfo &dns);
+
+public slots:
+    void writeEncryptedDoTLS();
+    void getAndDecryptResponseDoTLS();
+};
+
+class DoHResponse : public QObject
+{
+    Q_OBJECT
+public:
+    explicit DoHResponse(DNSInfo &dns, QByteArray dohRequest, QObject *parent = nullptr);
+
+    DNSInfo respondTo;
+    QByteArray request;
+    QSslSocket tls;
+
+signals:
+    void decryptedLookupDoneSendResponseNow(QByteArray response, DNSInfo &dns);
+
+public slots:
+    void writeEncryptedDoH();
+    void getAndDecryptResponseDoH();
 };
 
 class EncryptedResponse : public QObject
@@ -197,15 +272,19 @@ public:
     void buildTXTRecord(QByteArray &txt);
     void getValidServerCertificate(DNSInfo &dns);
     CertificateHolder* getCachedCert(QHostAddress server, QString provider);
+    void sendDoH(DNSInfo &dns);
+    void sendDoTLS(DNSInfo &dns);
     void makeEncryptedRequest(DNSInfo &dns);
     void setProvider(QString dnscryptStamp);
     quint64 getTimeNow();
 
+    QSslSocket tls;
     QUdpSocket udp;
     QByteArray request;
-    QString providerName, currentStamp;
+    QString providerName, hostname, path, currentStamp, userAgent;
     quint8 providerKey[crypto_box_PUBLICKEYBYTES];
     quint8 resolverMagic[DNSCRYPT_MAGIC_QUERY_LEN];
+    quint8 protocolVersion;
     quint16 currentPort;
     QHostAddress currentServer;
     bool dnsCryptAvailable, dnsCryptEnabled, newKeyPerRequest, pendingValidation;
@@ -215,7 +294,7 @@ public:
 signals:
     void certificateVerifiedDoEncryptedLookup(SignedBincertFields bincertFields, QHostAddress serverAddress, quint16 serverPort, bool newKey = false, DNSInfo dns = DNSInfo());
     void decryptedLookupDoneSendResponseNow(QByteArray response, DNSInfo &dns);
-    void displayLastUsedProvider(QString providerName, QHostAddress server, quint16 port);
+    void displayLastUsedProvider(quint64 props, QString providerName, QHostAddress server, quint16 port);
 
 public slots:
     void validateCertificates();

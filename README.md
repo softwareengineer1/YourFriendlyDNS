@@ -1,6 +1,9 @@
 # YourFriendlyDNS
 A really awesome multi-platform (lin,win,mac,android) local caching and proxying dns server!
 
+GET LATEST VERSION HERE (v2.1.1):
+https://github.com/softwareengineer1/YourFriendlyDNS/releases
+
 ![YourFriendlyDNS v2.0](YFD-v2.1.1-macOS.png)
 {Version 2.1.1}
 1. DNS over TLS fixed and working properly now!

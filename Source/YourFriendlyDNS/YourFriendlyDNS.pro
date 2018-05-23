@@ -13,6 +13,14 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 TARGET = YourFriendlyDNS
 TEMPLATE = app
 
+VERSION = 2.1.1
+QMAKE_TARGET_COMPANY = freedom based software co.
+QMAKE_TARGET_PRODUCT = YourFriendlyDNS
+QMAKE_TARGET_DESCRIPTION = A local encrypting, caching and proxying dns proxy
+QMAKE_TARGET_COPYRIGHT = 2018
+
+#DEFINES += APP_VERSION=\\\"$$VERSION\\\"
+
 # The following define makes your compiler emit warnings if you use
 # any feature of Qt which has been marked as deprecated (the exact warnings
 # depend on your compiler). Please consult the documentation of the
@@ -90,8 +98,17 @@ CONFIG += mobility
 MOBILITY = 
 
 DISTFILES += \
-    GPLv2.txt
+    GPLv2.txt \
+    android/AndroidManifest.xml \
+    android/gradle/wrapper/gradle-wrapper.jar \
+    android/gradlew \
+    android/res/values/libs.xml \
+    android/build.gradle \
+    android/gradle/wrapper/gradle-wrapper.properties \
+    android/gradlew.bat
 
 RESOURCES += \
     images.qrc
+
+ANDROID_PACKAGE_SOURCE_DIR = $$PWD/android
 

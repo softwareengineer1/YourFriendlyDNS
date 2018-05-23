@@ -2,7 +2,6 @@
 #define DNSCRYPT_H
 
 #include <QHostAddress>
-#include <QHostInfo>
 #include <QSslSocket>
 #include <QUdpSocket>
 #include <QTcpSocket>

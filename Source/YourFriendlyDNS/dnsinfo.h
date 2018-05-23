@@ -106,7 +106,7 @@ public:
     static quint16 extractPort(QString &addr)
     {
         if(addr.size() == 0) return 443;
-        if(!addr.contains(".")) { quint16 port = addr.toInt(); addr.clear(); return port; }
+        if(!addr.contains(".") && !addr.contains("[")) { quint16 port = addr.toInt(); addr.clear(); return port; }
         if(addr.data()[0] == '[')
         {
             addr.remove(0, 1);

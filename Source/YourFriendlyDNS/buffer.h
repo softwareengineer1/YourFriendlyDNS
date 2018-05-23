@@ -83,8 +83,8 @@ public:
             flags |= PACKED_BUFFER_IS_BIG_ENDIAN;
     }
 
-    /*
-     * pack:
+
+     /* pack:
      * B : Byte : 1 byte (unsigned char)
      * W : Word : 2 bytes (unsigned short)
      * L : Long : 4 bytes (unsigned int)
@@ -228,8 +228,7 @@ public:
         fmtIndex++;
     }
 
-    /*
-    unpack:
+    /* unpack:
     B : Byte : 1 byte
     W : Word : 2 bytes
     L : Long : 4 bytes

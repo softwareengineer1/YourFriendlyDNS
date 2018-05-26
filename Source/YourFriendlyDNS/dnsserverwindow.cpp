@@ -3,13 +3,16 @@
 
 /* YourFriendlyDNS - A really awesome multi-platform (lin,win,mac,android) local caching and proxying dns server!
 Copyright (C) 2018  softwareengineer1 @ github.com/softwareengineer1
-Support my work so I can keep bringing you great free and open software!
+Support my work by sending me some Bitcoin or Bitcoin Cash in the value of what you valued one or more of my software projects,
+so I can keep bringing you great free and open software and continue to do so for a long time!
 I'm going entirely 100% free software this year in 2018 (and onwards I want to) :)
 Everything I make will be released under a free software license! That's my promise!
 If you want to contact me another way besides through github, insert your message into the blockchain with a BCH/BTC UTXO! ^_^
 Thank you for your support!
 BCH: bitcoincash:qzh3knl0xeyrzrxm5paenewsmkm8r4t76glzxmzpqs
 BTC: 1279WngWQUTV56UcTvzVAnNdR3Z7qb6R8j
+(These are the payment methods I currently accept,
+if you want to support me via another cryptocurrency let me know and I'll probably start accepting that one too)
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -92,6 +95,8 @@ void DNSServerWindow::serversInitialized()
     connect(server, SIGNAL(queryRespondedTo(ListEntry)), this, SLOT(queryRespondedTo(ListEntry)));
     connect(server->dnscrypt, &DNSCrypt::displayLastUsedProvider, this, &DNSServerWindow::displayLastUsedProvider);
     connect(settings, SIGNAL(clearDNSCache()), server, SLOT(clearDNSCache()));
+    connect(this, &DNSServerWindow::clearSources, settings->sourcerAndStampConverter, &providerSourcerStampConverter::clearSources);
+    connect(this, &DNSServerWindow::loadSource, settings->sourcerAndStampConverter, &providerSourcerStampConverter::loadSource);
     connect(cacheviewer, &CacheViewer::deleteEntriesFromCache, server, &SmallDNSServer::deleteEntriesFromCache);
 
     listeningIPsUpdate();
@@ -122,27 +127,48 @@ void DNSServerWindow::htmlChanged(QString &html)
 
 void DNSServerWindow::listeningIPsUpdate()
 {
-    QString listeningips = "Listening IPs: ";
     QList<QHostAddress> list = QNetworkInterface::allAddresses();
     QVector<quint32> ipslist;
-    for(int nIter=0; nIter<list.count(); nIter++)
+    QVector<Q_IPV6ADDR> ipv6slist;
+    QString listeningips = "";
+    if(list.size() > 0)
     {
-        if(!list[nIter].isLoopback())
+        for(int i = 0; i < list.count(); i++)
         {
-            if(list[nIter].protocol() == QAbstractSocket::IPv4Protocol)
+            if(!list[i].isLoopback())
             {
-                ipslist.append(QHostAddress(list[nIter].toString()).toIPv4Address());
-                listeningips += list[nIter].toString() + ", ";
+                if(listeningips == "") listeningips = "Listening IPs: ";
+                if(list[i].protocol() == QAbstractSocket::IPv4Protocol)
+                {
+                    ipslist.append(QHostAddress(list[i].toString()).toIPv4Address());
+                    listeningips += list[i].toString() + ", ";
+                }
+                else if(list[i].protocol() == QAbstractSocket::IPv6Protocol)
+                {
+                    ipv6slist.append(QHostAddress(list[i].toString()).toIPv6Address());
+                    listeningips += "[" + QHostAddress(QHostAddress(list[i].toString()).toIPv6Address()).toString() + "], ";
+                }
             }
         }
+        listeningips.truncate(listeningips.size()-2);
     }
-    listeningips.truncate(listeningips.size()-2);
 
     if(ipslist.size() > 0)
     {
         server->listeningIPs = ipslist;
-        ui->listeningIPs->setText(listeningips);
     }
+    if(ipv6slist.size() > 0)
+    {
+        server->listeningIPv6s = ipv6slist;
+    }
+
+    if(listeningips == "")
+    {
+        listeningips = "No non-loopback listening network addresses detected...\
+                        Check network connection and click here to refresh (Note: Doesn't effect the actual working of it)";
+    }
+
+    ui->listeningIPs->setText(listeningips);
 }
 
 void DNSServerWindow::setIPToFirstListening()
@@ -154,6 +180,11 @@ void DNSServerWindow::setIPToFirstListening()
         {
             settings->setRespondingIP(QHostAddress(server->listeningIPs[0]).toString());
             server->ipToRespondWith = server->listeningIPs[0];
+        }
+        if(server->listeningIPv6s.size() > 0)
+        {
+            settings->setRespondingIPv6(QHostAddress(server->listeningIPv6s[0]).toString());
+            server->ipv6ToRespondWith = server->listeningIPv6s[0];
         }
     }
 }
@@ -342,6 +373,18 @@ bool DNSServerWindow::settingsSave()
         }
         json["real_dns_servers"] = dnsarray;
 
+        QJsonArray sourcesarray;
+        foreach(const ProviderSource &s, settings->sourcerAndStampConverter->providerSources)
+        {
+            QJsonObject subObject;
+            subObject["url"] = s.url;
+            if(s.hash.size() > 0)
+                subObject["hash"] = s.hash.toHex().toStdString().c_str();
+            subObject["lastUpdatedTime"] = s.lastUpdated.toString();
+            sourcesarray.append(subObject);
+        }
+        json["dnscrypt_provider_sources"] = sourcesarray;
+
         QJsonArray whitelistarray;
         foreach(const ListEntry w, server->whitelist)
         {
@@ -494,6 +537,42 @@ bool DNSServerWindow::settingsLoad()
             server->realdns.push_back(dns);
             settings->appendDNSServer(dns);
         }
+    }
+
+    if(json.contains("dnscrypt_provider_sources") && json["dnscrypt_provider_sources"].isArray())
+    {
+        emit clearSources();
+        QString first;
+        QJsonArray sourcesarray = json["dnscrypt_provider_sources"].toArray();
+        for(int i = 0; i < sourcesarray.size(); i++)
+        {
+            QString url;
+            QByteArray hash;
+            QDateTime lastUpdated;
+            QJsonObject source = sourcesarray[i].toObject();
+            if(source.contains("url") && source["url"].isString())
+            {
+                url = source["url"].toString();
+                if(i == 0) first = url;
+            }
+            if(source.contains("hash") && source["hash"].isString())
+                hash = QByteArray::fromHex(source["hash"].toString().toUtf8());
+            if(source.contains("lastUpdatedTime") && source["lastUpdatedTime"].isString())
+                lastUpdated = QDateTime::fromString(source["lastUpdatedTime"].toString());
+
+            qDebug() << "Provider source loaded:" << url << hash << lastUpdated;
+            emit loadSource(url, false, hash, lastUpdated);
+        }
+        emit loadSource(first);
+    }
+    else
+    {
+        emit clearSources();
+        emit loadSource("https://download.dnscrypt.info/dnscrypt-resolvers/v2/public-resolvers.md", true);
+        emit loadSource("https://download.dnscrypt.info/dnscrypt-resolvers/v2/opennic.md", true);
+        emit loadSource("https://download.dnscrypt.info/dnscrypt-resolvers/v2/parental-control.md", true);
+        emit loadSource("https://raw.githubusercontent.com/softwareengineer1/YourFriendlyDNS/master/TestProviders.md", true);
+        emit loadSource("https://download.dnscrypt.info/dnscrypt-resolvers/v2/public-resolvers.md");
     }
 
     if(json.contains("whitelist") && json["whitelist"].isArray())

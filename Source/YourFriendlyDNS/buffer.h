@@ -5,9 +5,25 @@
 //Found here: https://github.com/DemoHn/asyncDNS-Qt/blob/master/buffer.cpp
 //Rewritten to be safer and consistently compiled across platforms to still work properly across platforms
 //Thanks for showing me a better way to do what I needed to do Nigshoxiz! :)
+//Rewritten by softwareengineer1 @ github.com/softwareengineer1
+//Part of YourFriendlyDNS, found at github.com/softwareengineer1/YourFriendlyDNS
 
 //Note from during rewriting: Scratch that, it's also unsafe, as different compilers compile it differently making it crash on some platforms
 //so I'm re-writing it as a c++ templated parameter pack function instead of old c style var_arg (which is causing undefined behavior and incompatibility)
+
+/* This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along
+with this program; if not, write to the Free Software Foundation, Inc.,
+51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA. */
 
 #include <QtEndian>
 #include <QByteArray>
@@ -145,7 +161,7 @@ public:
                 word = qToBigEndian(*(quint16*)source);
             else
                 word = qToLittleEndian(*(quint16*)source);
-            buf.append(word);
+            buf.append((const char*)&word, 2);
             packedLen += 2;
         }
         else if(fmt[fmtIndex] == 'L')
@@ -155,7 +171,7 @@ public:
                 Long = qToBigEndian(*(quint32*)source);
             else
                 Long = qToLittleEndian(*(quint32*)source);
-            buf.append(Long);
+            buf.append((const char*)&Long, 4);
             packedLen += 4;
         }
         else if(fmt[fmtIndex] == 'I')
@@ -165,10 +181,10 @@ public:
                 LongLong = qToBigEndian(*(quint64*)source);
             else
                 LongLong = qToLittleEndian(*(quint64*)source);
-            buf.append(LongLong);
+            buf.append((const char*)&LongLong, 8);
             packedLen += 8;
         }
-        else if(fmt[fmtIndex] == 'T') //Any type
+        /*else if(fmt[fmtIndex] == 'T') //Any type
         {
             T typeT;
             qDebug() << "Packing typeT:" << type_name<decltype(typeT)>().c_str() << "size:" << sizeof typeT;
@@ -180,7 +196,7 @@ public:
 
             buf.append((const char*)&typeT, sizeof typeT);
             packedLen += sizeof typeT;
-        }
+        }*/
         else if(fmt[fmtIndex] == 'Z') //Null-terminated C String
         {
             size_t len = strlen((const char*)source);

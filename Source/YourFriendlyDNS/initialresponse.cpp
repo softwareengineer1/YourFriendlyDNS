@@ -2,13 +2,16 @@
 
 /* YourFriendlyDNS - A really awesome multi-platform (lin,win,mac,android) local caching and proxying dns server!
 Copyright (C) 2018  softwareengineer1 @ github.com/softwareengineer1
-Support my work so I can keep bringing you great free and open software!
+Support my work by sending me some Bitcoin or Bitcoin Cash in the value of what you valued one or more of my software projects,
+so I can keep bringing you great free and open software and continue to do so for a long time!
 I'm going entirely 100% free software this year in 2018 (and onwards I want to) :)
 Everything I make will be released under a free software license! That's my promise!
 If you want to contact me another way besides through github, insert your message into the blockchain with a BCH/BTC UTXO! ^_^
 Thank you for your support!
 BCH: bitcoincash:qzh3knl0xeyrzrxm5paenewsmkm8r4t76glzxmzpqs
 BTC: 1279WngWQUTV56UcTvzVAnNdR3Z7qb6R8j
+(These are the payment methods I currently accept,
+if you want to support me via another cryptocurrency let me know and I'll probably start accepting that one too)
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -127,12 +130,13 @@ InitialResponse::InitialResponse(DNSInfo &dns, QObject *parent)
     respondTo.senderPort = dns.senderPort;
     respondTo.req = dns.req;
     respondTo.ttl = dns.ttl;
+    timeWithoutAResponse = QDateTime::currentDateTime();
     responseHandled = false;
 }
 
 void InitialResponse::lookupDoneSendResponseNow(DNSInfo &dns, QUdpSocket *serversocket)
 {
-    if(respondTo.domainString == dns.domainString && respondTo.question.qtype == dns.question.qtype && !responseHandled)
+    if(respondTo == dns && !responseHandled)
     {
         if(respondTo.req.size() > DNS_HEADER_SIZE)
         {
@@ -140,11 +144,9 @@ void InitialResponse::lookupDoneSendResponseNow(DNSInfo &dns, QUdpSocket *server
             {
                 if(dns.hasIPs)
                 {
-                    qDebug() << "[A RECORD] to:" << respondTo.sender << respondTo.senderPort;
-                    qDebug() << "request:" << respondTo.req << "answer offset:" << dns.answeroffset;
                     morphRequestIntoARecordResponse(respondTo.req, dns.ipaddresses, dns.answeroffset, respondTo.ttl);
-                    qDebug() << "response:" << respondTo.req;
                     serversocket->writeDatagram(respondTo.req, respondTo.sender, respondTo.senderPort);
+                    qDebug() << "[A RECORD] to:" << respondTo.sender << respondTo.senderPort << "\n" << respondTo.req;
                 }
             }
             else
@@ -152,13 +154,20 @@ void InitialResponse::lookupDoneSendResponseNow(DNSInfo &dns, QUdpSocket *server
                 if(dns.res.size() > DNS_HEADER_SIZE)
                 {
                     *(quint16*)dns.res.data() = *(quint16*)respondTo.req.data(); //match the request/response ids in case they aren't matching
-                    qDebug() << "Responding to a type:" << dns.question.qtype << "response:\n" << dns.res;
                     serversocket->writeDatagram(dns.res, respondTo.sender, respondTo.senderPort);
+                    qDebug() << "Responding to a type:" << dns.question.qtype << "\n" << dns.res;
                 }
             }
         }
 
+        qDebug() << "Response handled in:" << ((float)timeWithoutAResponse.msecsTo(QDateTime::currentDateTime()) / 1000.0f) << "secs";
         responseHandled = true;
         this->deleteLater();
     }
+}
+
+void InitialResponse::deleteObjectsTheresNoResponseFor()
+{
+    if(!responseHandled && timeWithoutAResponse.secsTo(QDateTime::currentDateTime()) > 60)
+        this->deleteLater();
 }

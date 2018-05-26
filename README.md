@@ -3,8 +3,24 @@ A really awesome multi-platform (lin,win,mac,android) local caching and proxying
 
 GET LATEST VERSION HERE (v2.1.1):
 https://github.com/softwareengineer1/YourFriendlyDNS/releases
-
 ![YourFriendlyDNS v2.0](YFD-v2.1.1-macOS.png)
+
+![YourFriendlyDNS Auto Sourcer and Stamp Converter](YFD-autosourcer-stampconverter.png)
+{Version 2.1.2}
+1. Added a disconnected / no response timeout state, so if no responses are received (maybe disconnected/offline) the message queue shouldn’t drown in unhandled requests.
+
+2. Added Auto Sourcer + Stamp Converter!
+ -> Already has the main three available and known sources so far (and a source with my providers during testing) by default, and you can easily add further sources if/when they’re available or change locations.
+
+Now you don’t need to copy and paste stamps from those lists into the application, you can instead load (from saved) or update source lists that are in the standard simple format, see what server info is actually contained, and click “ADD IT!” button to add to your dns providers / dns servers list!
+
+The stamp converter supports protocols v1,v2,v3 (v0 is just plain dns, it can read them but won’t use them if DNSCrypt is enabled)
+
+3. Reduced DoH + DoTLS request handling objects into one object that handles both (they were so similar, I realized I could just make them one type)
+
+4. Fixed some small things, noticed incorrect while adding this (like v2 or v3 stamp reading when no hashes provided, if the first hash’s length is zero just skip trying to read hashes since none were provided)
+
+
 {Version 2.1.1}
 1. DNS over TLS fixed and working properly now!
 -> The provided hostname doesn’t necessarily resolve to the right ip to use for DoTLS. Since QSSlSocket inherits from QTcpSocket, I can therefore use connectToHost rather than connectToHostEncrypted (which doesn’t take an ip, only a hostname) and use startEncryption function manually. Using the provided IP address in the stamp if there is one now correctly connects to the DoTLS provider! Also added the 2 byte length  prefix that I forgot initially. So now both DNS over HTTPS and DNS over TLS work! :)

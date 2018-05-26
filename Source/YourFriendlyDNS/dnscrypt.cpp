@@ -1,5 +1,32 @@
 #include "dnscrypt.h"
 
+/* YourFriendlyDNS - A really awesome multi-platform (lin,win,mac,android) local caching and proxying dns server!
+Copyright (C) 2018  softwareengineer1 @ github.com/softwareengineer1
+Support my work by sending me some Bitcoin or Bitcoin Cash in the value of what you valued one or more of my software projects,
+so I can keep bringing you great free and open software and continue to do so for a long time!
+I'm going entirely 100% free software this year in 2018 (and onwards I want to) :)
+Everything I make will be released under a free software license! That's my promise!
+If you want to contact me another way besides through github, insert your message into the blockchain with a BCH/BTC UTXO! ^_^
+Thank you for your support!
+BCH: bitcoincash:qzh3knl0xeyrzrxm5paenewsmkm8r4t76glzxmzpqs
+BTC: 1279WngWQUTV56UcTvzVAnNdR3Z7qb6R8j
+(These are the payment methods I currently accept,
+if you want to support me via another cryptocurrency let me know and I'll probably start accepting that one too)
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along
+with this program; if not, write to the Free Software Foundation, Inc.,
+51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA. */
+
 DNSCrypt::DNSCrypt(QObject *parent)
 {
     Q_UNUSED(parent);
@@ -14,7 +41,7 @@ DNSCrypt::DNSCrypt(QObject *parent)
     memset(&currentCert, 0, sizeof currentCert);
     currentServer = QHostAddress("208.67.220.220");
     currentPort = 443;
-    protocolVersion = 0;
+    protocolVersion = 1;
     dnsCryptEnabled = true;
     newKeyPerRequest = pendingValidation = false;
     userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.12; rv:60.0) Gecko/20100101 Firefox/60.0";
@@ -89,100 +116,45 @@ CertificateHolder *DNSCrypt::getCachedCert(QHostAddress server, QString provider
     return nullptr;
 }
 
-DoTLSResponse::DoTLSResponse(DNSInfo &dns, QObject *parent)
+DoHDoTLSResponse::DoHDoTLSResponse(DNSInfo &dns, const QByteArray &dohRequest, QObject *parent)
 {
     Q_UNUSED(parent);
     respondTo = dns;
 
-    connect(&tls, SIGNAL(disconnected()), this, SLOT(disconnected()));
-    connect(&tls, SIGNAL(connected()), this, SLOT(startEncryption()));
-    connect(&tls, SIGNAL(encrypted()), this, SLOT(writeEncryptedDoTLS()));
-    connect(&tls, SIGNAL(readyRead()), this, SLOT(getAndDecryptResponseDoTLS()));
-    connect(&tls, &QSslSocket::peerVerifyError, this, &DoTLSResponse::verifyError);
-}
+    connect(&tls, SIGNAL(disconnected()), this, SLOT(deleteLater()));
+    connect(&tls, &QSslSocket::peerVerifyError, this, &DoHDoTLSResponse::verifyError);
 
-void DoTLSResponse::verifyError(const QSslError error)
-{
-    qDebug() << "TLS Error:" << error.errorString();
-}
-
-void DoTLSResponse::disconnected()
-{
-    this->deleteLater();
-}
-
-void DoTLSResponse::startEncryption()
-{
-    if(tls.isEncrypted()) return;
-    qDebug() << "Starting encryption! peerAddress:" << tls.peerAddress() << "port:" << tls.peerPort();
-    tls.startClientEncryption();
-}
-
-void DoTLSResponse::writeEncryptedDoTLS()
-{
-    quint16 prependedLen = respondTo.req.size();
-    prependedLen = qToBigEndian(prependedLen);
-    respondTo.req.prepend((const char*)&prependedLen, 2);
-
-    tls.write(respondTo.req);
-    qDebug() << "Sent DoTLS request:" << respondTo.req;
-    //cloudflare DoTLS 1.1.1.1:853, and cloudflare DoTLS 1.0.0.1:853
-    //sdns://AwcAAAAAAAAACzEuMS4xLjE6ODUzj6qqqqqqqqqqqqqqqqqqqhC7u7u7u7u7u7u7u7u7u7u7FmNsb3VkZmxhcmUtZG5zLmNvbTo4NTMA
-    //sdns://AwcAAAAAAAAACzEuMC4wLjE6ODUzj6qqqqqqqqqqqqqqqqqqqhC7u7u7u7u7u7u7u7u7u7u7FmNsb3VkZmxhcmUtZG5zLmNvbTo4NTMA
-    //cloudflare 1.1.1.1:853 with empty ip field and 1dot1dot1dot1.cloudflare-dns.com:853 hostname and port provided
-    //sdns://AwcAAAAAAAAAAI-qqqqqqqqqqqqqqqqqqqoQu7u7u7u7u7u7u7u7u7u7uyQxZG90MWRvdDFkb3QxLmNsb3VkZmxhcmUtZG5zLmNvbTo4NTMA
-    //cloudflare 1.1.1.1:853 with just port 853 in the ip field and 1dot1dot1dot1.cloudflare-dns.com hostname provided
-    //sdns://AwcAAAAAAAAAAzg1M4-qqqqqqqqqqqqqqqqqqqoQu7u7u7u7u7u7u7u7u7u7uyAxZG90MWRvdDFkb3QxLmNsb3VkZmxhcmUtZG5zLmNvbQA
-}
-
-void DoTLSResponse::getAndDecryptResponseDoTLS()
-{
-    QByteArray decryptedResponse = tls.readAll(); //Well, TLS decrypts it for us...
-    qDebug() << "Received DoTLS response:" << decryptedResponse;
-    if(decryptedResponse.size() > 2)
+    if(dohRequest.size() > 0)
     {
-        decryptedResponse.remove(0, 2);
-        emit decryptedLookupDoneSendResponseNow(decryptedResponse, respondTo);
+        dohrequest = dohRequest;
+        connect(&tls, SIGNAL(encrypted()), this, SLOT(writeEncryptedDoH()));
+        connect(&tls, SIGNAL(readyRead()), this, SLOT(getAndDecryptResponseDoH()));
+    }
+    else
+    {
+        connect(&tls, SIGNAL(encrypted()), this, SLOT(writeEncryptedDoTLS()));
+        connect(&tls, SIGNAL(readyRead()), this, SLOT(getAndDecryptResponseDoTLS()));
     }
 }
 
-DoHResponse::DoHResponse(DNSInfo &dns, QByteArray dohRequest, QObject *parent)
-{
-    Q_UNUSED(parent);
-    respondTo = dns;
-    request = dohRequest;
-
-    connect(&tls, SIGNAL(disconnected()), this, SLOT(deleteLater()));
-    connect(&tls, SIGNAL(connected()), this, SLOT(startEncryption()));
-    connect(&tls, SIGNAL(encrypted()), this, SLOT(writeEncryptedDoH()));
-    connect(&tls, SIGNAL(readyRead()), this, SLOT(getAndDecryptResponseDoH()));
-    connect(&tls, &QSslSocket::peerVerifyError, this, &DoHResponse::verifyError);
-}
-
-void DoHResponse::verifyError(const QSslError error)
+void DoHDoTLSResponse::verifyError(const QSslError error)
 {
     qDebug() << "TLS Error:" << error.errorString();
 }
 
-void DoHResponse::disconnected()
+void DoHDoTLSResponse::startEncryption()
 {
-    this->deleteLater();
-}
-
-void DoHResponse::startEncryption()
-{
-    if(tls.isEncrypted()) return;
     qDebug() << "Starting encryption! peerAddress:" << tls.peerAddress() << "port:" << tls.peerPort();
     tls.startClientEncryption();
 }
 
-void DoHResponse::writeEncryptedDoH()
+void DoHDoTLSResponse::writeEncryptedDoH()
 {
-    tls.write(request);
-    qDebug() << "Sent DoH request:" << request;
+    tls.write(dohrequest);
+    qDebug() << "Sent DoH request:" << dohrequest;
 }
 
-void DoHResponse::getAndDecryptResponseDoH()
+void DoHDoTLSResponse::getAndDecryptResponseDoH()
 {
     QByteArray decryptedResponse = tls.readAll(); //Well, TLS decrypts it for us...
     qDebug() << "Received DoH response:" << decryptedResponse;
@@ -198,45 +170,56 @@ void DoHResponse::getAndDecryptResponseDoH()
     }
 }
 
-void DNSCrypt::sendDoH(DNSInfo &dns)
+void DoHDoTLSResponse::writeEncryptedDoTLS()
+{
+    quint16 prependedLen = respondTo.req.size();
+    prependedLen = qToBigEndian(prependedLen);
+    respondTo.req.prepend((const char*)&prependedLen, 2);
+
+    tls.write(respondTo.req);
+    qDebug() << "Sent DoTLS request:" << respondTo.req;
+}
+
+void DoHDoTLSResponse::getAndDecryptResponseDoTLS()
+{
+    QByteArray decryptedResponse = tls.readAll();
+    qDebug() << "Received DoTLS response:" << decryptedResponse;
+    if(decryptedResponse.size() > 2)
+    {
+        decryptedResponse.remove(0, 2);
+        emit decryptedLookupDoneSendResponseNow(decryptedResponse, respondTo);
+    }
+}
+
+void DNSCrypt::sendDoHDoTLS(DNSInfo &dns, DNSCryptProtocol protocol)
 {
     QByteArray dohRequest;
-    QString post_request_header=R"(POST %1 HTTP/1.1
+    if(protocol == DNSCryptProtocol::DNSoverHTTPS)
+    {
+        QString post_request_header=R"(POST %1 HTTP/1.1
 Host: %2
 User-Agent: %3
 Accept: application/dns-udpwireformat
 Content-Type: application/dns-udpwireformat
 Content-Length: %4)";
-    post_request_header += "\r\n\r\n";
+        post_request_header += "\r\n\r\n";
 
-    dohRequest.append(post_request_header.arg(path).arg(hostname).arg(userAgent).arg(dns.req.size()));
-    dohRequest.append(dns.req);
-
-    DoHResponse *doh = new DoHResponse(dns, dohRequest);
-    if(doh)
-    {
-        connect(doh, &DoHResponse::decryptedLookupDoneSendResponseNow, this, &DNSCrypt::decryptedLookupDoneSendResponseNow);
-        doh->tls.setPeerVerifyName(hostname);
-        if(currentServer.isNull())
-            doh->tls.connectToHostEncrypted(hostname, currentPort);
-        else
-            doh->tls.connectToHost(currentServer, currentPort);
+        dohRequest.append(post_request_header.arg(path).arg(hostname).arg(userAgent).arg(dns.req.size()));
+        dohRequest.append(dns.req);
     }
-}
 
-void DNSCrypt::sendDoTLS(DNSInfo &dns)
-{
-    DoTLSResponse *doTLS = new DoTLSResponse(dns);
-    if(doTLS)
+    DoHDoTLSResponse *d = new DoHDoTLSResponse(dns, dohRequest);
+    if(d)
     {
-        qDebug() << "Sending over TLS:" << dns.req << "to host:" << hostname << currentServer << "port:" << currentPort;
-        connect(doTLS, &DoTLSResponse::decryptedLookupDoneSendResponseNow, this, &DNSCrypt::decryptedLookupDoneSendResponseNow);
-
-        doTLS->tls.setPeerVerifyName(hostname);
+        connect(d, &DoHDoTLSResponse::decryptedLookupDoneSendResponseNow, this, &DNSCrypt::decryptedLookupDoneSendResponseNow);
+        d->tls.setPeerVerifyName(hostname);
         if(currentServer.isNull())
-            doTLS->tls.connectToHostEncrypted(hostname, currentPort);
+            d->tls.connectToHostEncrypted(hostname, currentPort);
         else
-            doTLS->tls.connectToHost(currentServer, currentPort);
+        {
+            connect(&d->tls, SIGNAL(connected()), d, SLOT(startEncryption()));
+            d->tls.connectToHost(currentServer, currentPort);
+        }
     }
 }
 
@@ -263,11 +246,11 @@ void DNSCrypt::makeEncryptedRequest(DNSInfo &dns)
     }
     else if(protocolVersion == 2)
     {
-        sendDoH(dns);
+        sendDoHDoTLS(dns, DNSCryptProtocol::DNSoverHTTPS);
     }
     else if(protocolVersion == 3)
     {
-        sendDoTLS(dns);
+        sendDoHDoTLS(dns, DNSCryptProtocol::DNSoverTLS);
     }
 }
 

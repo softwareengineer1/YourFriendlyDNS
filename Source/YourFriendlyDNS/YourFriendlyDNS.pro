@@ -13,7 +13,7 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 TARGET = YourFriendlyDNS
 TEMPLATE = app
 
-VERSION = 2.1.1
+VERSION = 2.1.2
 QMAKE_TARGET_COMPANY = freedom based software co.
 QMAKE_TARGET_PRODUCT = YourFriendlyDNS
 QMAKE_TARGET_DESCRIPTION = A local encrypting, caching and proxying dns proxy
@@ -72,7 +72,8 @@ SOURCES += \
     smallhttpserver.cpp \
     messagesthread.cpp \
     cacheviewer.cpp \
-    dnscrypt.cpp
+    dnscrypt.cpp \
+    providersourcerstampconverter.cpp
 
 HEADERS += \
         dnsserverwindow.h \
@@ -86,13 +87,15 @@ HEADERS += \
     cacheviewer.h \
     dnsinfo.h \
     dnscrypt.h \
-    buffer.h
+    buffer.h \
+    providersourcerstampconverter.h
 
 FORMS += \
         dnsserverwindow.ui \
     settingswindow.ui \
     indexhtml.ui \
-    cacheviewer.ui
+    cacheviewer.ui \
+    providersourcerstampconverter.ui
 
 CONFIG += mobility
 MOBILITY = 

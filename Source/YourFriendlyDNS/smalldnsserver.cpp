@@ -2,13 +2,16 @@
 
 /* YourFriendlyDNS - A really awesome multi-platform (lin,win,mac,android) local caching and proxying dns server!
 Copyright (C) 2018  softwareengineer1 @ github.com/softwareengineer1
-Support my work so I can keep bringing you great free and open software!
+Support my work by sending me some Bitcoin or Bitcoin Cash in the value of what you valued one or more of my software projects,
+so I can keep bringing you great free and open software and continue to do so for a long time!
 I'm going entirely 100% free software this year in 2018 (and onwards I want to) :)
 Everything I make will be released under a free software license! That's my promise!
 If you want to contact me another way besides through github, insert your message into the blockchain with a BCH/BTC UTXO! ^_^
 Thank you for your support!
 BCH: bitcoincash:qzh3knl0xeyrzrxm5paenewsmkm8r4t76glzxmzpqs
 BTC: 1279WngWQUTV56UcTvzVAnNdR3Z7qb6R8j
+(These are the payment methods I currently accept,
+if you want to support me via another cryptocurrency let me know and I'll probably start accepting that one too)
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -29,11 +32,14 @@ SmallDNSServer::SmallDNSServer(QObject *parent)
     Q_UNUSED(parent);
     ipToRespondWith = QHostAddress("127.0.0.1").toIPv4Address();
     cachedMinutesValid = 7;
-    dnsTTL = 25200;
+    dnsTTL = 4200;
+    inTimeout = 0;
+    numSentRequests = numReceivedResponses = 0;
     dnscryptEnabled = true; //Encryption now enabled by default (and there's no fallback to plaintext dns either for security, you have to manually disable it to use regular dns again)
     dedicatedDNSCrypter = "sdns://AQAAAAAAAAAADjIwOC42Ny4yMjAuMjIwILc1EUAgbyJdPivYItf9aR6hwzzI1maNDL4Ev6vKQ_t5GzIuZG5zY3J5cHQtY2VydC5vcGVuZG5zLmNvbQ";
 
     whitelistmode = initialMode = blockmode_returnlocalhost = true;
+    sendrecvFlag = false;
     //default is whitelist mode, with just these three entries to get you started!
     whitelist.push_back(ListEntry("*startpage.com"));
     whitelist.push_back(ListEntry("*ixquick-proxy.com"));
@@ -183,6 +189,32 @@ QString SmallDNSServer::selectRandomDNSCryptServer()
     return "sdns://AQAAAAAAAAAADjIwOC42Ny4yMjAuMjIwILc1EUAgbyJdPivYItf9aR6hwzzI1maNDL4Ev6vKQ_t5GzIuZG5zY3J5cHQtY2VydC5vcGVuZG5zLmNvbQ";
 }
 
+bool SmallDNSServer::weDoStillHaveAConnection()
+{
+    if(inTimeout == 0)
+    {
+        if(!sendrecvFlag && responseLastReceivedTime.secsTo(requestLastSentTime) > 30)
+        {
+            qDebug() << "Haven't received responses for the last 30 seconds... Let's slow down... Taking a two minute timeout.";
+            timeoutEnd = QDateTime::currentDateTime().addSecs(120);
+            inTimeout = 1;
+        }
+    }
+    else if(inTimeout == 1)
+    {
+        if(QDateTime::currentDateTime() > timeoutEnd || sendrecvFlag)
+        {
+            responseLastReceivedTime = requestLastSentTime = QDateTime::currentDateTime();
+            inTimeout = 0;
+            emit deleteObjectsTheresNoResponseFor();
+            return true;
+        }
+
+        return false;
+    }
+    return true;
+}
+
 void SmallDNSServer::processDNSRequests()
 {
     QByteArray datagram;
@@ -260,6 +292,8 @@ void SmallDNSServer::processDNSRequests()
 
             if(shouldCacheDomain)
             {
+                if(!weDoStillHaveAConnection()) return;
+
                 qDebug() << "Caching this domain->" << dns.domainString;
                 if(cached) //If cached, update the expiry now, even though we're about to update it again in a moment
                     cached->expiry = QDateTime::currentDateTime().addSecs(cachedMinutesValid * 60);
@@ -295,7 +329,12 @@ void SmallDNSServer::processDNSRequests()
 
                 InitialResponse *ir = new InitialResponse(dns);
                 if(ir)
+                {
                     connect(this, &SmallDNSServer::lookupDoneSendResponseNow, ir, &InitialResponse::lookupDoneSendResponseNow);
+                    connect(this, &SmallDNSServer::deleteObjectsTheresNoResponseFor, ir, &InitialResponse::deleteObjectsTheresNoResponseFor);
+                }
+                requestLastSentTime = QDateTime::currentDateTime();
+                sendrecvFlag = 0;
             }
             else if(cached)
             {
@@ -357,8 +396,9 @@ void SmallDNSServer::parseAndRespond(QByteArray &datagram, DNSInfo &dns)
 
         if(dns.hasIPs && dns.question.qtype == DNS_TYPE_A)
             emit queryRespondedTo(ListEntry(dns.domainString, dns.ipaddresses[0]));
-
     }
+    responseLastReceivedTime = QDateTime::currentDateTime();
+    sendrecvFlag = 1;
 }
 
 void SmallDNSServer::decryptedLookupDoneSendResponseNow(QByteArray decryptedResponse, DNSInfo &dns)

@@ -3,13 +3,16 @@
 
 /* YourFriendlyDNS - A really awesome multi-platform (lin,win,mac,android) local caching and proxying dns server!
 Copyright (C) 2018  softwareengineer1 @ github.com/softwareengineer1
-Support my work so I can keep bringing you great free and open software!
+Support my work by sending me some Bitcoin or Bitcoin Cash in the value of what you valued one or more of my software projects,
+so I can keep bringing you great free and open software and continue to do so for a long time!
 I'm going entirely 100% free software this year in 2018 (and onwards I want to) :)
 Everything I make will be released under a free software license! That's my promise!
 If you want to contact me another way besides through github, insert your message into the blockchain with a BCH/BTC UTXO! ^_^
 Thank you for your support!
 BCH: bitcoincash:qzh3knl0xeyrzrxm5paenewsmkm8r4t76glzxmzpqs
 BTC: 1279WngWQUTV56UcTvzVAnNdR3Z7qb6R8j
+(These are the payment methods I currently accept,
+if you want to support me via another cryptocurrency let me know and I'll probably start accepting that one too)
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -29,6 +32,12 @@ SettingsWindow::SettingsWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui
 {
     ui->setupUi(this);
     indexhtml = new IndexHTML();
+    sourcerAndStampConverter = new providerSourcerStampConverter();
+    if(sourcerAndStampConverter)
+    {
+        connect(this, &SettingsWindow::decodeStamp, sourcerAndStampConverter, &providerSourcerStampConverter::decodeStamp);
+        connect(sourcerAndStampConverter, &providerSourcerStampConverter::addToServerList, this, &SettingsWindow::addToServerList);
+    }
     blockmode_localhost = true;
 
     #ifdef Q_OS_MACOS
@@ -44,7 +53,10 @@ SettingsWindow::SettingsWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui
 
 SettingsWindow::~SettingsWindow()
 {
-    delete indexhtml;
+    if(sourcerAndStampConverter)
+        delete sourcerAndStampConverter;
+    if(indexhtml)
+        delete indexhtml;
     delete ui;
 }
 
@@ -83,9 +95,19 @@ void SettingsWindow::appendDNSServer(const QString &dns)
         ui->realdnsservers->addItem(dns);
 }
 
+void SettingsWindow::addToServerList(QString stamp)
+{
+    appendDNSServer(stamp);
+}
+
 void SettingsWindow::setRespondingIP(const QString &ip)
 {
     ui->respondingIP->setText(ip);
+}
+
+void SettingsWindow::setRespondingIPv6(const QString &ipv6)
+{
+    ui->respondingIPv6->setText(ipv6);
 }
 
 bool SettingsWindow::getDNSCryptEnabled()
@@ -230,7 +252,8 @@ void SettingsWindow::on_clearCacheButton_clicked()
 
 void SettingsWindow::on_editindexButton_clicked()
 {
-    indexhtml->show();
+    if(indexhtml)
+        indexhtml->show();
 }
 
 void SettingsWindow::on_ipinjectButton_clicked()
@@ -312,4 +335,16 @@ void SettingsWindow::on_newKeyPerRequest_stateChanged(int arg1)
 void SettingsWindow::on_backButton_clicked()
 {
     this->hide();
+}
+
+void SettingsWindow::on_getProvidersButton_clicked()
+{
+    if(sourcerAndStampConverter)
+        sourcerAndStampConverter->show();
+}
+
+void SettingsWindow::on_realdnsservers_itemClicked(QListWidgetItem *item)
+{
+    if(sourcerAndStampConverter && item->text().startsWith("sdns://"))
+        emit decodeStamp(item->text());
 }

@@ -195,21 +195,29 @@ bool SmallDNSServer::weDoStillHaveAConnection()
     {
         if(!sendrecvFlag && responseLastReceivedTime.secsTo(requestLastSentTime) > 30)
         {
-            qDebug() << "Haven't received responses for the last 30 seconds... Let's slow down... Taking a two minute timeout.";
-            timeoutEnd = QDateTime::currentDateTime().addSecs(120);
+            timeoutInferencePeriod = QDateTime::currentDateTime().addSecs(30);
             inTimeout = 1;
         }
     }
-    else if(inTimeout == 1)
+    else if(inTimeout > 0)
     {
-        if(QDateTime::currentDateTime() > timeoutEnd || sendrecvFlag)
+        if(inTimeout == 1)
+        {
+            if(QDateTime::currentDateTime() > timeoutInferencePeriod && !sendrecvFlag && responseLastReceivedTime.secsTo(requestLastSentTime) > 60)
+            {
+                timeoutEnd = QDateTime::currentDateTime().addSecs(120);
+                qDebug() << "Haven't received responses for the last 60 seconds... Let's slow down... Taking a two minute timeout.";
+                inTimeout = 2;
+                //Now firmly in a timeout
+            }
+        }
+        if(QDateTime::currentDateTime() > timeoutEnd || sendrecvFlag) //Only unless a response comes in of one already sent while waiting it out
         {
             responseLastReceivedTime = requestLastSentTime = QDateTime::currentDateTime();
             inTimeout = 0;
             emit deleteObjectsTheresNoResponseFor();
             return true;
         }
-
         return false;
     }
     return true;

@@ -35,7 +35,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include <QProcess>
 #include "androidsuop.h"
 #include "initialresponse.h"
-#include "dnscrypt.h" //Including my DNSCrypt class and helpers, giving us DNSCrypt protocol version 1,2,3 support!
+#include "dnscrypt.h" //Including our DNSCrypt class and helpers, giving us DNSCrypt protocol version 1,2,3 support!
 
 /* YourFriendlyDNS - A really awesome multi-platform (lin,win,mac,android) local caching and proxying dns server!
 Copyright (C) 2018  softwareengineer1 @ github.com/softwareengineer1
@@ -84,7 +84,7 @@ public:
     void determineDoHDoTLSProviders();
 
     bool whitelistmode, blockmode_returnlocalhost, initialMode, autoTTL, dnscryptEnabled, sendrecvFlag;
-    QDateTime requestLastSentTime, responseLastReceivedTime, timeoutEnd;
+    QDateTime requestLastSentTime, responseLastReceivedTime, timeoutInferencePeriod, timeoutEnd;
     Q_IPV6ADDR ipv6ToRespondWith;
     quint32 ipToRespondWith, cachedMinutesValid, dnsTTL, inTimeout;
     quint64 numSentRequests, numReceivedResponses;

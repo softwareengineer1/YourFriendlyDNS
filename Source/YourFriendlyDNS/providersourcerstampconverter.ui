@@ -92,7 +92,11 @@
        </font>
       </property>
       <property name="text">
-       <string>+</string>
+       <string/>
+      </property>
+      <property name="icon">
+       <iconset resource="images.qrc">
+        <normaloff>:/images/plus.png</normaloff>:/images/plus.png</iconset>
       </property>
      </widget>
     </item>
@@ -145,7 +149,11 @@
        </font>
       </property>
       <property name="text">
-       <string>-</string>
+       <string/>
+      </property>
+      <property name="icon">
+       <iconset resource="images.qrc">
+        <normaloff>:/images/minus.png</normaloff>:/images/minus.png</iconset>
       </property>
      </widget>
     </item>
@@ -376,6 +384,8 @@
   <tabstop>pathEdit</tabstop>
   <tabstop>autosourcesTree</tabstop>
  </tabstops>
- <resources/>
+ <resources>
+  <include location="images.qrc"/>
+ </resources>
  <connections/>
 </ui>

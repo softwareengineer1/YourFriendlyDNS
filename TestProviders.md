@@ -1,6 +1,6 @@
 # Test Providers
 
-These were providers I was testing, making sure it interprets all stamps properly.
+These were providers I was testing, making sure it interprets all stamps properly, and just making sure everything working properly.
 
 --
 
@@ -28,6 +28,6 @@ sdns://AgcAAAAAAAAABzEuMC4wLjGgENk8mGSlIfMGXMOlIlCcKvq7AVgcrZxtjon911-ep0cg63Ul-
 opendns v1 DNSCrypt
 sdns://AQAAAAAAAAAADjIwOC42Ny4yMjAuMjIwILc1EUAgbyJdPivYItf9aR6hwzzI1maNDL4Ev6vKQ_t5GzIuZG5zY3J5cHQtY2VydC5vcGVuZG5zLmNvbQ
 
-## opendns DNSCrypt
+## opendns DNSCrypt ipv6
 opendns v1 DNSCrypt ipv6
 sdns://AQAAAAAAAAAAD1syNjIwOjA6Y2NjOjoyXSC3NRFAIG8iXT4r2CLX_WkeocM8yNZmjQy-BL-rykP7eRsyLmRuc2NyeXB0LWNlcnQub3BlbmRucy5jb20

@@ -206,7 +206,7 @@ void providerSourcerStampConverter::on_autosourcesTree_currentItemChanged(QTreeW
     Q_UNUSED(previous);
     if(current)
     {
-        if(current->columnCount() > 0)
+        if(current->columnCount() > 1)
             decodeStamp(current->text(1));
     }
 }

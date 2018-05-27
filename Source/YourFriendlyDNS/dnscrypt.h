@@ -281,11 +281,12 @@ class ProviderSource : public QObject
     Q_OBJECT
 public:
     QSslSocket tls;
-    QByteArray data, hash, downloadRequest;
+    QByteArray data, hash, oldhash, downloadRequest;
     QString url, userAgent, sourcesDir, sourcesName, filePath;
     QDateTime lastUpdated;
     QVector<ProviderFromSource> providers;
     int offset;
+    bool fileWasLoaded;
 
     ProviderSource()
     {
@@ -294,11 +295,10 @@ public:
     }
     ProviderSource(const QString &url, const QByteArray &hash = "", const QDateTime lastUpdated = QDateTime())
     {
+        init();
         this->url = url;
         this->hash = hash;
         this->lastUpdated = lastUpdated;
-        this->userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.12; rv:60.0) Gecko/20100101 Firefox/60.0";
-        this->offset = 0;
 
         sourcesDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
         sourcesDir += QDir::separator();
@@ -313,7 +313,7 @@ public:
 
         connectUp();
     }
-    ProviderSource(const ProviderSource &src)
+    ProviderSource(const ProviderSource &src) : QObject(nullptr)
     {
         copyFrom(src);
         connectUp();
@@ -336,6 +336,7 @@ public:
     {
         lastUpdated = QDateTime();
         offset = 0;
+        fileWasLoaded = false;
         this->userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.12; rv:60.0) Gecko/20100101 Firefox/60.0";
     }
     void connectUp()
@@ -376,11 +377,14 @@ public:
                 download();
                 return;
             }
-            interpretData();
+            interpretData(data);
             displayProviders(providers);
 
             f.close();
+            fileWasLoaded = true;
         }
+        else
+            download();
     }
 
     void download()
@@ -436,7 +440,7 @@ private:
 
     QByteArray extractFromTo(int startingFrom, int to)
     {
-        if(startingFrom <= data.size() && to <= data.size())
+        if(startingFrom < data.size() && to < data.size())
         {
             QByteArray extracted;
             extracted.resize(to - startingFrom);
@@ -447,7 +451,7 @@ private:
         return "";
     }
 
-    void interpretData()
+    void interpretData(const QByteArray &data)
     {
         if(data.startsWith("# "))
         {
@@ -473,19 +477,22 @@ private:
                     providers.append(ProviderFromSource(listedName, description, stamp));
                 }
 
-                entryFound = data.indexOf("## ", entryFound + 3);
+                entryFound = data.indexOf("## ", entryFound + offset);
                 offset = 0;
             }
 
+            oldhash = hash;
             hash = QCryptographicHash::hash(data, QCryptographicHash::Sha256);
+        }
+    }
 
-            QFile f(filePath);
-            if(f.open(QFile::WriteOnly))
-            {
-                f.write(data);
-                f.close();
-            }
-            lastUpdated = QDateTime::currentDateTime();
+    void saveData()
+    {
+        QFile f(filePath);
+        if(f.open(QFile::WriteOnly))
+        {
+            f.write(data);
+            f.close();
         }
     }
 
@@ -507,7 +514,13 @@ private slots:
         }
         data += response;
 
-        interpretData();
+        interpretData(data);
+        if(hash != oldhash || !fileWasLoaded)
+        {
+            lastUpdated = QDateTime::currentDateTime();
+            saveData();
+            qDebug() << "Saved updated sources list!" << sourcesName << "New hash:" << hash << "old hash:" << oldhash;
+        }
         emit displayProviders(providers);
     }
 

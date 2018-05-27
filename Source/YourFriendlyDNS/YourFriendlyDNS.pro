@@ -13,13 +13,12 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 TARGET = YourFriendlyDNS
 TEMPLATE = app
 
-VERSION = 2.1.2
+VERSION = 2.1.3
 QMAKE_TARGET_COMPANY = freedom based software co.
 QMAKE_TARGET_PRODUCT = YourFriendlyDNS
 QMAKE_TARGET_DESCRIPTION = A local encrypting, caching and proxying dns proxy
 QMAKE_TARGET_COPYRIGHT = 2018
-
-#DEFINES += APP_VERSION=\\\"$$VERSION\\\"
+DEFINES += APP_VERSION=\\\"$$VERSION\\\"
 
 # The following define makes your compiler emit warnings if you use
 # any feature of Qt which has been marked as deprecated (the exact warnings
@@ -27,7 +26,7 @@ QMAKE_TARGET_COPYRIGHT = 2018
 # deprecated API in order to know how to port your code away from it.
 DEFINES += QT_DEPRECATED_WARNINGS
 #comment this next line out if you need to debug it if somethings not quite right (you'll get the qDebug() output then [and on macOS it has to be a debug build too for some reason])
-#DEFINES += QT_NO_DEBUG_OUTPUT
+DEFINES += QT_NO_DEBUG_OUTPUT
 
 # You can also make your code fail to compile if you use deprecated APIs.
 # In order to do so, uncomment the following line.

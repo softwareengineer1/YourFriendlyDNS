@@ -4,15 +4,18 @@ A really awesome multi-platform (lin,win,mac,android) local caching and proxying
 GET LATEST VERSION HERE (v2.1.1):
 https://github.com/softwareengineer1/YourFriendlyDNS/releases
 ![YourFriendlyDNS v2.0](YFD-v2.1.1-macOS.png)
+{Version 2.1.3}
+1. Timeout state improved (intermediary state to confirm timeout)
+
 
 ![YourFriendlyDNS Auto Sourcer and Stamp Converter](YFD-autosourcer-stampconverter.png)
 {Version 2.1.2}
 1. Added a disconnected / no response timeout state, so if no responses are received (maybe disconnected/offline) the message queue shouldn’t drown in unhandled requests.
 
 2. Added Auto Sourcer + Stamp Converter!
- -> Already has the main three available and known sources so far (and a source with my providers during testing) by default, and you can easily add further sources if/when they’re available or change locations.
+ -> Auto Sourcer, already has the main three available and known sources preloaded by default (and a source with my providers during testing, demonstrating the ease of adding or making/using your own provider sources resources), and you can easily add further sources if/when they’re available or change web locations. HTTPS (port 443) and HTTP (port 80) sources locations supported.
 
-Now you don’t need to copy and paste stamps from those lists into the application, you can instead load (from saved) or update source lists that are in the standard simple format, see what server info is actually contained, and click “ADD IT!” button to add to your dns providers / dns servers list!
+Much more user-friendly! Now you don’t need to manually look at provider sources and pick and choose which ones to then copy and paste one by one into the application… You can instead load (from saved once retrieved recently) or download/update source lists from their urls that are in the standard simple format, select them to decode and see what server info is actually contained, change server parameter to re-encode the server info back to stamp form and finally click “ADD IT!” button to add to your dns providers / dns servers list!
 
 The stamp converter supports protocols v1,v2,v3 (v0 is just plain dns, it can read them but won’t use them if DNSCrypt is enabled)
 

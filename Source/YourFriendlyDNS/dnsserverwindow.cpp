@@ -165,7 +165,7 @@ void DNSServerWindow::listeningIPsUpdate()
     if(listeningips == "")
     {
         listeningips = "No non-loopback listening network addresses detected...\
-                        Check network connection and click here to refresh (Note: Doesn't effect the actual working of it)";
+                        Check network connection!";
     }
 
     ui->listeningIPs->setText(listeningips);
@@ -542,7 +542,6 @@ bool DNSServerWindow::settingsLoad()
     if(json.contains("dnscrypt_provider_sources") && json["dnscrypt_provider_sources"].isArray())
     {
         emit clearSources();
-        QString first;
         QJsonArray sourcesarray = json["dnscrypt_provider_sources"].toArray();
         for(int i = 0; i < sourcesarray.size(); i++)
         {
@@ -553,7 +552,6 @@ bool DNSServerWindow::settingsLoad()
             if(source.contains("url") && source["url"].isString())
             {
                 url = source["url"].toString();
-                if(i == 0) first = url;
             }
             if(source.contains("hash") && source["hash"].isString())
                 hash = QByteArray::fromHex(source["hash"].toString().toUtf8());
@@ -563,7 +561,9 @@ bool DNSServerWindow::settingsLoad()
             qDebug() << "Provider source loaded:" << url << hash << lastUpdated;
             emit loadSource(url, false, hash, lastUpdated);
         }
-        emit loadSource(first);
+        QJsonObject source = sourcesarray[0].toObject();
+        if(sourcesarray.size() > 0 && source.contains("url") && source["url"].isString())
+            emit loadSource(source["url"].toString());
     }
     else
     {

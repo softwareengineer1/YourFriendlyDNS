@@ -1,14 +1,21 @@
-# YourFriendlyDNS
 
-A really awesome multi-platform (lin,win,mac,android) local caching and proxying dns server!
+<div align="center">
 
-![YourFriendlyDNS v2.0](YFD-v2.1.1-macOS.png) ![YourFriendlyDNS Auto Sourcer and Stamp Converter](YFD-autosourcer-stampconverter.png)
+  <p>
+    <h1> YourFriendlyDNS </h1>
+    <p> A really awesome multi-platform (lin,win,mac,android) local caching and proxying dns server! </p>
+  </p>
+
+  <img src="https://raw.githubusercontent.com/softwareengineer1/YourFriendlyDNS/master/YFD-v2.1.1-macOS.png" title="YFD-v2.1.1-macOS" alt="YFD-v2.1.1-macOS" width="440" align="middle">
+  <img src="https://raw.githubusercontent.com/softwareengineer1/YourFriendlyDNS/master/YFD-autosourcer-stampconverter.png" title="YourFriendlyDNS Auto Sourcer and Stamp Converter" alt="YourFriendlyDNS Auto Sourcer and Stamp Converter" width="440" align="middle">
+
+</div>
+
+---
 
 ## Download
 
 You can always find the latest version on [the releases page](https://github.com/softwareengineer1/YourFriendlyDNS/releases)
-
----
 
 If you want to have the latest version you can also:
 
